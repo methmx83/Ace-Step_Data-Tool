@@ -1,7 +1,18 @@
 {
   "prompt_templates": {
     "genre": {
-      "system_prompt": "Analyze this audio and identify the musical genre.\nRespond ONLY with valid JSON in this exact format:\n{\"genres\": [\"primary_genre\", \"secondary_genre\"]}\n\nFocus on:\n- Primary genre (main style)\n- Secondary genre or subgenre if applicable\n- Use specific, accurate genre names\n- Maximum 2 genres\n- Use English names only.",
+      "system_prompt_lines": [
+        "Analyze this audio and identify the musical genre.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"genres\": [\"primary_genre\", \"secondary_genre\"]}",
+        "",
+        "Focus on:",
+        "- Primary genre (main style)",
+        "- Secondary genre or subgenre if applicable",
+        "- Use specific, accurate genre names",
+        "- Maximum 2 genres",
+        "- Use English names only."
+      ],
       "user_prompt": "Audio title: {title}\nArtist: {artist}",
       "expected_format": {
         "genres": ["string", "string"]
@@ -11,7 +22,14 @@
       "retry_count": 2
     },
     "mood": {
-      "system_prompt": "Analyze the audio and return between 2 and 3 mood tags.\nRespond ONLY with valid JSON in this exact format:\n{\"mood\": [\"mood1\", \"mood2\", \"mood3\"]}\n- Provide at least 2 and at most 3 items.\n- Use only concise, single-word or short moods.\n- English terms only.",
+      "system_prompt_lines": [
+        "Analyze the audio and return 3 mood tags.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"mood\": [\"mood1\", \"mood2\", \"mood3\"]}",
+        "- Provide exactly 3 items.",
+        "- Use only concise, single-word or short moods.",
+        "- English terms only."
+      ],
       "user_prompt": "",
       "expected_format": {
         "mood": ["string", "string", "string"]
@@ -21,17 +39,35 @@
       "retry_count": 0
     },
     "instruments": {
-      "system_prompt": "Identify the main instruments and sounds in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\"]}\n\nFocus on:\n- Clearly audible instruments\n- The 3-4 most prominent instruments\n- Use standard instrument names \n- Include electronic elements if present\n- Use English names only.\n- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beats'). Only actual instruments.",
+      "system_prompt_lines": [
+        "Identify the main instruments in this audio.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\"]}",
+        "",
+        "Focus on:",
+        "- Clearly audible instruments",
+        "- The 4 most prominent instruments",
+        "- Use standard instrument names ",
+        "- Use English names only.",
+        "- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beat').",
+        "Only actual instruments."
+      ],
       "user_prompt": "",
       "expected_format": {
         "instruments": ["string", "string", "string", "string"]
       },
-      "max_tokens": 60,
-      "temperature": 0.2,
-      "retry_count": 2
+      "max_tokens": 64,
+      "temperature": 0.3,
+      "retry_count": 4
     },
     "vocal": {
-      "system_prompt": "Analyze the vocal characteristics in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}\n\nChoose exactly ONE from the list above. Use English terms only.",
+      "system_prompt_lines": [
+        "Analyze the vocal characteristics in this audio.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}",
+        "",
+        "Choose exactly ONE from the list above. Use English terms only."
+      ],
       "user_prompt": "",
       "expected_format": {
         "vocal_type": "string"
@@ -48,15 +84,25 @@
     "fallback_enabled": true,
   "combine_duplicates": true,
   "audio_segments": ["best", "middle"],
+  "audio_segments_overrides": {
+    "instruments": ["best", "start", "end"]
+  },
   "content_retry": {
     "enabled": true,
     "max_attempts": 2,
     "delay_seconds": 0.3,
     "temperature_boost": 0.1,
     "overrides": {
-        "mood": { "max_attempts": 3, "temperature_boost": 0.15 }
+        "mood": { "max_attempts": 4, "temperature_boost": 0.15 }
       }
   }
+  },
+  "retry_templates": {
+    "genre": "IMPORTANT: Respond ONLY with JSON matching exactly {\"genres\": [\"genre1\", \"genre2\"]}. Provide 2 specific genres. English only. No explanations.",
+    "mood": "IMPORTANT: Return exactly 3 distinct mood items as a JSON array under key \"mood\". Use concise, single- or two-word English moods. JSON only, no explanations.",
+    "instruments": "IMPORTANT: Respond ONLY with JSON matching exactly {\"instruments\": [\"inst1\", \"inst2\", \"inst3\", \"inst4\"]}. Provide 3-4 real instruments (no genres/vocals). English only. No explanations.",
+    "vocal": "IMPORTANT: Respond ONLY with JSON like {\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}. Choose exactly one. English only. No explanations.",
+    "default": "IMPORTANT: Return at least {need} distinct {category} item(s) as per the JSON schema. JSON only, no explanations."
   },
   "output_format": {
     "tag_separator": ", ",
@@ -65,16 +111,16 @@
     "lowercase_tags": true,
     "min_tags_per_category": {
       "genre": 2,
-      "mood": 2,
-      "instruments": 2,
+      "mood": 3,
+      "instruments": 3,
       "vocal": 1
     },
     "max_tags_per_category": {
       "genre": 2,
       "mood": 3,
-      "instruments": 3,
+      "instruments": 4,
       "vocal": 1
     },
-    "max_total_tags": 9
+    "max_total_tags": 10
   }
 }

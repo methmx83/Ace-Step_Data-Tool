@@ -357,6 +357,56 @@ class AudioProcessor:
             # Fallback zu middle
             start_sample = (len(audio_data) - max_samples) // 2
             return audio_data[start_sample:start_sample + max_samples], start_sample / sr
+
+    def _normalize_segment(self, segment: np.ndarray, info: Dict[str, Any]) -> np.ndarray:
+        """Defensive Normalisierung: Clip-Schutz, begrenztes Gain, keine Anhebung sehr leiser Segmente."""
+        try:
+            if segment.size == 0:
+                info["normalized"] = False
+                info["gain_db"] = 0.0
+                info["peak_before"] = 0.0
+                info["rms_before"] = 0.0
+                return segment
+
+            peak = float(np.max(np.abs(segment)))
+            rms = float(np.sqrt(np.mean(segment ** 2)))
+            info["peak_before"] = peak
+            info["rms_before"] = rms
+
+            # 1) Nur absenken, wenn Peak > 1.0 (Clipping-Schutz)
+            if peak > 1.0:
+                g = 1.0 / peak
+                segment = segment * g
+                info["normalized"] = True
+                info["gain_db"] = float(20.0 * np.log10(max(g, 1e-12)))
+                return segment
+
+            # 2) Sehr leise Segmente nicht hochziehen (Rauschen vermeiden)
+            # Schwellenwerte: Peak < 0.2 (~ -14 dBFS) oder RMS < 0.02 (~ -34 dBFS @ float32)
+            if peak < 0.2 or rms < 0.02:
+                info["normalized"] = False
+                info["gain_db"] = 0.0
+                return segment
+
+            # 3) Leichte Normalisierung mit Gain-Limit (max +6 dB), Zielpeak ~ -1 dBFS
+            target_peak = 0.89
+            current_peak = max(peak, 1e-9)
+            g = min(target_peak / current_peak, 2.0)  # 2.0 == +6 dB
+
+            if abs(g - 1.0) > 1e-3:
+                segment = segment * g
+                info["normalized"] = True
+                info["gain_db"] = float(20.0 * np.log10(max(g, 1e-12)))
+            else:
+                info["normalized"] = False
+                info["gain_db"] = 0.0
+
+            return segment
+        except Exception as e:
+            logger.warning(f"Normalization failed: {e}")
+            info["normalized"] = False
+            info["gain_db"] = 0.0
+            return segment
     
     def process_audio_file(self, file_path: str, force_reprocess: bool = False) -> Optional[ProcessedAudio]:
         """
@@ -382,7 +432,9 @@ class AudioProcessor:
                 "max_duration": self.config.max_duration,
                 "mono": self.config.mono_conversion,
                 "normalize": self.config.normalize_audio,
-                "segment_strategy": self.config.segment_strategy
+                "segment_strategy": self.config.segment_strategy,
+                "norm_version": 2,
+                "resampler": "soxr_hq"
             }
             
             cache_key = self._generate_cache_key(file_path, processing_params)
@@ -395,13 +447,23 @@ class AudioProcessor:
             
             logger.info(f"Processing audio: {Path(file_path).name}")
             
-            # Audio laden
+            # Audio laden (hochwertiges Resampling mit Fallback)
             try:
-                audio_data, orig_sr = librosa.load(
-                    file_path, 
-                    sr=self.config.target_sr if self.config.target_sr > 0 else None,
-                    mono=self.config.mono_conversion
-                )
+                try:
+                    audio_data, orig_sr = librosa.load(
+                        file_path,
+                        sr=self.config.target_sr if self.config.target_sr > 0 else None,
+                        mono=self.config.mono_conversion,
+                        res_type="soxr_hq"
+                    )
+                except Exception as e_soxr:
+                    logger.debug(f"librosa.load soxr_hq failed ({e_soxr}), falling back to kaiser_best")
+                    audio_data, orig_sr = librosa.load(
+                        file_path,
+                        sr=self.config.target_sr if self.config.target_sr > 0 else None,
+                        mono=self.config.mono_conversion,
+                        res_type="kaiser_best"
+                    )
             except Exception as e:
                 logger.error(f"Audio loading failed for {file_path}: {e}")
                 return None
@@ -415,11 +477,7 @@ class AudioProcessor:
             
             # Normalisierung
             if self.config.normalize_audio:
-                max_val = np.max(np.abs(segment_data))
-                if max_val > 0:
-                    segment_data = segment_data / max_val
-                    processing_info["normalized"] = True
-                    processing_info["original_max"] = float(max_val)
+                segment_data = self._normalize_segment(segment_data, processing_info)
             
             # ProcessedAudio erstellen
             processed = ProcessedAudio(
@@ -454,13 +512,23 @@ class AudioProcessor:
                 logger.error(f"Audio file not found: {file_path}")
                 return results
 
-            # Einmal laden/konvertieren
+            # Einmal laden/konvertieren (hochwertiges Resampling mit Fallback)
             try:
-                audio_data, _ = librosa.load(
-                    file_path,
-                    sr=self.config.target_sr if self.config.target_sr > 0 else None,
-                    mono=self.config.mono_conversion
-                )
+                try:
+                    audio_data, _ = librosa.load(
+                        file_path,
+                        sr=self.config.target_sr if self.config.target_sr > 0 else None,
+                        mono=self.config.mono_conversion,
+                        res_type="soxr_hq"
+                    )
+                except Exception as e_soxr:
+                    logger.debug(f"librosa.load soxr_hq failed ({e_soxr}), falling back to kaiser_best")
+                    audio_data, _ = librosa.load(
+                        file_path,
+                        sr=self.config.target_sr if self.config.target_sr > 0 else None,
+                        mono=self.config.mono_conversion,
+                        res_type="kaiser_best"
+                    )
             except Exception as e:
                 logger.error(f"Audio loading failed for {file_path}: {e}")
                 return results
@@ -484,6 +552,8 @@ class AudioProcessor:
                     "mono": self.config.mono_conversion,
                     "normalize": self.config.normalize_audio,
                     "segment_strategy": seg or self.config.segment_strategy,
+                    "norm_version": 2,
+                    "resampler": "soxr_hq",
                 }
                 cache_key = self._generate_cache_key(file_path, processing_params)
 
@@ -511,11 +581,7 @@ class AudioProcessor:
 
                 # Normalisierung
                 if self.config.normalize_audio:
-                    max_val = np.max(np.abs(segment_data))
-                    if max_val > 0:
-                        segment_data = segment_data / max_val
-                        processing_info["normalized"] = True
-                        processing_info["original_max"] = float(max_val)
+                    segment_data = self._normalize_segment(segment_data, processing_info)
 
                 processed = ProcessedAudio(
                     audio_data=segment_data.astype(np.float32),

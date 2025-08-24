@@ -15,6 +15,12 @@ import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+import os
+import re
+
+# Globale Session-Infos für Zusatz-Logs (z. B. RAW Responses)
+_CURRENT_SESSION_NAME: Optional[str] = None
+_RAW_BASE_DIR = Path("logs") / "raw"
 
 class DualLogger:
     """
@@ -47,14 +53,14 @@ class DualLogger:
         log_dir_path = Path(log_dir)
         log_dir_path.mkdir(exist_ok=True)
         
-        # Session-Name generieren falls nicht gegeben
+    # Session-Name generieren falls nicht gegeben
         if session_name is None:
             session_name = f"tagging_session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Log-Datei-Pfad
         log_file = log_dir_path / f"{session_name}.log"
         
-        # Root Logger konfigurieren
+    # Root Logger konfigurieren
         root_logger = logging.getLogger()
         root_logger.setLevel(log_level)
         
@@ -85,6 +91,16 @@ class DualLogger:
         file_handler.setFormatter(file_formatter)
         root_logger.addHandler(file_handler)
         
+        # RAW-Ordner für diese Session vorbereiten
+        try:
+            global _CURRENT_SESSION_NAME
+            _CURRENT_SESSION_NAME = session_name
+            (_RAW_BASE_DIR / session_name).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            # RAW Directory ist optional, daher nur debug-loggen
+            tmp_logger = logging.getLogger("LoggerSetup")
+            tmp_logger.debug(f"Could not prepare RAW directory: {e}")
+
         # Session-Info loggen
         logger = logging.getLogger("LoggerSetup")
         logger.info(f"Logging session started: {session_name}")
@@ -213,6 +229,61 @@ def log_exception(logger: logging.Logger, operation: str, exception: Exception):
     logger.error(f"Exception in {operation}: {type(exception).__name__}: {exception}")
     logger.debug(f"Exception traceback:", exc_info=True)
 
+def _safe_filename(text: str) -> str:
+    """Erstellt einen dateisicheren, kurzen Dateinamen-Teil."""
+    text = (text or "").strip().lower()
+    # Erlaube Buchstaben, Zahlen, Bindestrich und Unterstrich
+    text = re.sub(r"[^a-z0-9_-]+", "-", text)[:64]
+    return text or "untitled"
+
+def _get_raw_session_dir() -> Path:
+    """Gibt den RAW-Ordner für die aktuelle Session zurück (wird falls nötig erzeugt)."""
+    session = _CURRENT_SESSION_NAME or f"tagging_session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    raw_dir = _RAW_BASE_DIR / session
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    return raw_dir
+
+def save_raw_response(category: str, response: str, prompt: Optional[str] = None, label: Optional[str] = None) -> Optional[str]:
+    """
+    Speichert die Rohantwort des Modells in einer separaten Datei unter logs/raw/<session>/.
+
+    Args:
+        category: Kategorie-Name (z. B. "genre", "mood")
+        response: Rohantwort als String
+        prompt: Optionaler Prompt-Text (wird in Datei mit abgelegt)
+        label: Optionaler Zusatz (z. B. "attempt1"/"retry"/Dateiname)
+
+    Returns:
+        Pfad zur geschriebenen Datei oder None bei Fehler
+    """
+    try:
+        if not isinstance(response, str):
+            response = str(response)
+
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        cat = _safe_filename(category)
+        lab = f"_{_safe_filename(label)}" if label else ""
+        filename = f"{ts}_{cat}{lab}.txt"
+        raw_dir = _get_raw_session_dir()
+        path = raw_dir / filename
+
+        with path.open('w', encoding='utf-8') as f:
+            f.write(f"CATEGORY: {category}\n")
+            f.write(f"TIMESTAMP: {ts}\n")
+            f.write("=" * 80 + "\n\n")
+            if prompt:
+                f.write("PROMPT:\n")
+                f.write(prompt)
+                f.write("\n\n" + "-" * 80 + "\n\n")
+            f.write("RAW RESPONSE:\n")
+            f.write(response)
+            f.write("\n")
+
+        return str(path)
+    except Exception as e:
+        logging.getLogger("RawSaver").debug(f"Failed to save raw response: {e}")
+        return None
+
 def log_model_response(logger: logging.Logger, category: str, prompt: str, response: str, parsed: dict = None):
     """Loggt Model-Response detailliert für Debugging"""
     logger.debug(f"=== MODEL RESPONSE: {category} ===")
@@ -221,6 +292,10 @@ def log_model_response(logger: logging.Logger, category: str, prompt: str, respo
     logger.debug(f"Raw response: {response}")
     logger.debug(f"Parsed result: {parsed}")
     logger.debug("=" * 50)
+    # Zusätzlich: RAW-Response in separater Datei ablegen
+    saved = save_raw_response(category=category, response=response, prompt=prompt)
+    if saved:
+        logger.debug(f"Raw response saved to: {saved}")
 
 
 if __name__ == "__main__":

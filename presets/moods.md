@@ -12,7 +12,6 @@
 - europop
 - new wave
 - film scores
-- soundtrack
 - singer songwriter
 - trap
 - punk
@@ -152,7 +151,6 @@
 - glitchy
 - good time
 - groovy
-- happy
 - hard
 - haunting
 - heavy
@@ -224,53 +222,47 @@
 - pluck
 - pizzicato
 - piano
-- bass
+- keys
 - drums
 - guitar
 - claps
 - percussion
 - orchestra
-- synthesizer
-- nylon guitar
 - mallet
-- 808 bass
 - industrial drums
-- xylophone
 - whistle
 - vox
 - violin
 - trumpets
-- tambourine
 - synth
 - synth bell
 - synth pad
 - synth bass
+- synth arp
 - strings
 - horns
 - cinematic drums
 - drums
-- choirs
+- choir
+- male choir
+- women choir
 - celesta
 - big drums
 - arpeggio
 - bells
 - atmosphere
-- gong
 - arp
-- arpeggiated
 - flute
 - electronic drums
-- french horns
 - acoustic guitar
 - bass guitar
-- distorted guitar
 - electric guitar
 - fender rhodes
 - metal guitar
+- muted guitar
 - spanish guitar
 - acoustic bass
 - electric bass
-- slap bass
 - acoustic piano
 - grand piano
 - classical piano
@@ -289,11 +281,8 @@
 - african drums
 - timpani
 - taiko drums
-- djembe
-- drum loops
-- drum machine
 - acoustic drums
-- choir
+- voices
 - woodwinds
 - clarinet
 - oboe
