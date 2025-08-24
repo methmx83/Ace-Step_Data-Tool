@@ -81,7 +81,7 @@
     "default_categories": ["genre", "mood", "instruments", "vocal"],
     "request_delay_seconds": 0.1,
     "max_parallel_requests": 1,
-    "fallback_enabled": true,
+  "fallback_enabled": true,
   "combine_duplicates": true,
   "audio_segments": ["best", "middle"],
   "audio_segments_overrides": {
@@ -102,7 +102,8 @@
     "mood": "IMPORTANT: Return exactly 3 distinct mood items as a JSON array under key \"mood\". Use concise, single- or two-word English moods. JSON only, no explanations.",
     "instruments": "IMPORTANT: Respond ONLY with JSON matching exactly {\"instruments\": [\"inst1\", \"inst2\", \"inst3\", \"inst4\"]}. Provide 3-4 real instruments (no genres/vocals). English only. No explanations.",
     "vocal": "IMPORTANT: Respond ONLY with JSON like {\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}. Choose exactly one. English only. No explanations.",
-    "default": "IMPORTANT: Return at least {need} distinct {category} item(s) as per the JSON schema. JSON only, no explanations."
+  "default": "IMPORTANT: Return at least {need} distinct {category} item(s) as per the JSON schema. JSON only, no explanations.",
+  "incremental": "IMPORTANT: We already have: {existing}. Return ONLY {need} additional unique {category} item(s). Do not repeat any of the existing items. JSON only, no explanations."
   },
   "output_format": {
     "tag_separator": ", ",
