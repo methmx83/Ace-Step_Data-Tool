@@ -1,0 +1,22 @@
+accelerate>=1.0.0
+bitsandbytes>=0.45.0; platform_system != 'Windows'  # optional, auf Win kann CUDA Wheels fehlen
+huggingface-hub>=0.24.0
+transformers==4.55.1
+tokenizers==0.21.4
+torch==2.7.1+cu126
+torchvision==0.22.1+cu126
+torchaudio==2.7.1+cu126
+numpy>=1.26
+librosa>=0.10
+soundfile>=0.12
+soxr>=0.5
+mutagen>=1.46
+pydub>=0.25
+rapidfuzz>=3.0
+rich>=13.7
+psutil>=5.9
+
+# optional UI
+gradio>=5.0
+fastapi>=0.110
+uvicorn>=0.29

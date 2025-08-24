@@ -1,0 +1,29 @@
+{
+  "model_path": "Qwen/Qwen2-Audio-7B-Instruct",
+  "max_new_tokens": 80,
+  "temperature": 0.2,
+  "top_p": 0.85,
+  "use_4bit": true,
+  "force_fp16": false,
+  "device_map": "auto",
+  "torch_dtype": "float16",
+  "sampling_rate": 16000,
+  "audio_max_duration": 30,
+  "batch_size": 2,
+  "enable_mixed_precision": true,
+  "memory_efficient": true,
+  "_hardware_optimizations": {
+    "target_gpu": "RTX_4070_Super_12GB",
+    "vram_available": "12GB",
+    "estimated_model_usage": "4-6GB",
+    "batch_processing_enabled": true,
+    "cuda_version": "12.9",
+    "torch_compile_enabled": false
+  },
+  "_performance_settings": {
+    "prefetch_factor": 2,
+    "num_workers": 4,
+    "pin_memory": true,
+    "empty_cache_between_batches": false
+  }
+}

@@ -1,0 +1,325 @@
+## Genre:
+- industrial
+- indie pop
+- hybrid orchestral
+- folktronica
+- synth pop
+- glitch folk
+- grunge
+- hardrock
+- hip hop
+- new wave
+- film scores
+- soundtrack
+- singer songwriter
+- trap
+- punk
+- psychedelic
+- trip hop
+- r&b
+- reggae
+- reggaeton
+- tropical
+- cinematic
+- chill-out
+- pop
+- 80's
+- ambient rock
+- ambiance
+- drill
+- drum'n'bass
+- dancehall
+- electronic
+- country folk
+- techno
+- trance
+- acid
+- acid house
+- acid lounge
+- house
+- funky house
+- progressive house
+- disco
+- disco house
+- drum and bass
+- dubstep
+- edm
+- electro
+- electro house
+- electro pop
+- electro rock
+- new age
+- experimental
+- rock
+- alternative rock
+- indie rock
+- hard rock
+- brit rock
+- hardcore
+- heavy metal
+- metal
+- nu metal
+- rap
+- blues
+- film score
+- world
+- rhumba
+- mambo
+- bollywood
+- asian
+- western
+- salsa
+- baroque
+- soul
+- chill out
+- country
+- christmas
+- ambient
+- funk
+- jazz
+- swing
+- big band
+- folk
+- classical
+- orchestral
+- ballad
+- garage
+- rock and roll
+- rockabilly
+- boogie-woogie
+- 60s
+- 70s
+- deep-house
+
+## Mood:
+- action
+- adventurous
+- aggressive
+- ambient
+- angelic
+- angry
+- atmospheric
+- beautiful
+- bouncy
+- bright
+- catchy
+- charm
+- cheerful
+- childlike
+- chilled
+- cinematic
+- clapping
+- clumsy
+- cold
+- colorful
+- confident
+- cool
+- courageous
+- creepy
+- cute
+- dancing
+- danger
+- daring
+- dark
+- deep
+- depressing
+- dirty
+- downbeat
+- dramatic
+- dreamy
+- driving
+- dynamic
+- emotional
+- energetic
+- epic
+- ethereal
+- euphoric
+- evolving
+- exciting
+- expansive
+- experimental
+- family
+- feel good
+- frantic
+- frightening
+- frisky
+- fun
+- funny
+- futuristic
+- gentle
+- glamorous
+- glitchy
+- good time
+- groovy
+- happy
+- hard
+- haunting
+- heavy
+- heroic
+- high-energy
+- holiday
+- hopeful
+- humorous
+- hypnotic
+- inquisitive
+- inspirational
+- intense
+- intimate
+- lonely
+- lost
+- love
+- lustful
+- magical
+- meditative
+- melancholic
+- mellow
+- melodic
+- motivational
+- mysterious
+- nervous
+- nostalgic
+- optimistic
+- otherworldly
+- passionate
+- peaceful
+- playful
+- poetic
+- positive
+- powerful
+- rebellious
+- relaxed
+- relentless
+- religious
+- restless
+- romantic
+- royal
+- sad
+- scary
+- sentimental
+- sexy
+- smooth
+- soulful
+- summer
+- sunshine
+- suspense
+- thoughtful
+- triumphant
+- understated
+- vicious
+- vulnerable
+- youth
+- hard-hitting
+- party
+- danceable
+- storytelling
+- narrative
+- gangsta attitude
+
+## Instrument:
+- 808
+- heavy bass
+- ocarina
+- pluck
+- pizzicato
+- piano
+- bass
+- drums
+- guitar
+- claps
+- percussion
+- orchestra
+- synthesizer
+- nylon guitar
+- mallet
+- 808 bass
+- industrial drums
+- xylophone
+- whistle
+- vox
+- violin
+- trumpets
+- tambourine
+- synth
+- synth bell
+- synth pad
+- synth bass
+- strings
+- horns
+- cinematic drums
+- drums
+- choirs
+- celesta
+- big drums
+- arpeggio
+- bells
+- atmosphere
+- gong
+- arp
+- arpeggiated
+- flute
+- electronic drums
+- french horns
+- acoustic guitar
+- bass guitar
+- distorted guitar
+- electric guitar
+- fender rhodes
+- metal guitar
+- spanish guitar
+- acoustic bass
+- electric bass
+- slap bass
+- acoustic piano
+- grand piano
+- classical piano
+- electric piano
+- harpsichord
+- keyboard
+- action strings
+- cello
+- double bass
+- epic strings
+- pizz strings
+- staccato strings
+- viola
+- trombone
+- tuba
+- african drums
+- timpani
+- taiko drums
+- djembe
+- drum loops
+- drum machine
+- acoustic drums
+- choir
+- woodwinds
+- clarinet
+- oboe
+- organ
+- church organ
+- ethnic instruments
+- ethnic percussion
+- pads
+- vocoder
+- samples
+- turntables
+- world instruments
+- sitar
+- sub bass
+- bass drum
+- epic drums
+- hard drums
+- heavy bass
+- deep bass
+
+## Vocal Typ:
+- male rap
+- female rap
+- male vocal
+- female vocal
+- spoken word
+- male feature vocal
+- female feature vocal
+- singing
+- rap
+- instrumental
