@@ -319,6 +319,15 @@ class AudioProcessor:
         processing_info["segment_start"] = start_time
         
         return segment, processing_info
+
+    def _select_audio_segment_with_strategy(self, audio_data: np.ndarray, sr: int, strategy: str) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """Wie _select_audio_segment, aber mit expliziter Strategiewahl pro Aufruf."""
+        original_strategy = self.config.segment_strategy
+        try:
+            self.config.segment_strategy = strategy
+            return self._select_audio_segment(audio_data, sr)
+        finally:
+            self.config.segment_strategy = original_strategy
     
     def _find_best_segment(self, audio_data: np.ndarray, sr: int, duration: float) -> Tuple[np.ndarray, float]:
         """Findet das Segment mit der höchsten durchschnittlichen Energy"""
@@ -430,6 +439,104 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Audio processing failed for {file_path}: {e}")
             return None
+
+    def process_audio_segments(self, file_path: str, segments: List[str], force_reprocess: bool = False) -> List[ProcessedAudio]:
+        """
+        Verarbeitet mehrere 30s‑Segmente aus einer Datei und cached jede Variante separat.
+
+        Unterstützte Segmentnamen: "start", "middle", "end", "best", "full".
+        "full" wird nur verwendet, wenn die Datei kürzer als max_duration ist.
+        """
+        results: List[ProcessedAudio] = []
+        try:
+            file_path = str(Path(file_path).resolve())
+            if not Path(file_path).exists():
+                logger.error(f"Audio file not found: {file_path}")
+                return results
+
+            # Einmal laden/konvertieren
+            try:
+                audio_data, _ = librosa.load(
+                    file_path,
+                    sr=self.config.target_sr if self.config.target_sr > 0 else None,
+                    mono=self.config.mono_conversion
+                )
+            except Exception as e:
+                logger.error(f"Audio loading failed for {file_path}: {e}")
+                return results
+
+            if len(audio_data) == 0:
+                logger.error(f"Empty audio file: {file_path}")
+                return results
+
+            duration = len(audio_data) / self.config.target_sr
+
+            for seg in segments:
+                seg = (seg or "").lower().strip()
+                # Volle Länge nur, wenn <= max_duration
+                if seg == "full" and duration > self.config.max_duration:
+                    continue
+
+                # Cache-Key pro Strategie
+                processing_params = {
+                    "target_sr": self.config.target_sr,
+                    "max_duration": self.config.max_duration,
+                    "mono": self.config.mono_conversion,
+                    "normalize": self.config.normalize_audio,
+                    "segment_strategy": seg or self.config.segment_strategy,
+                }
+                cache_key = self._generate_cache_key(file_path, processing_params)
+
+                if not force_reprocess:
+                    cached = self._get_cached_audio(cache_key)
+                    if cached:
+                        results.append(cached)
+                        continue
+
+                # Segment wählen
+                if seg in ("start", "middle", "end", "best"):
+                    segment_data, processing_info = self._select_audio_segment_with_strategy(audio_data, self.config.target_sr, seg)
+                elif seg == "full" and duration <= self.config.max_duration:
+                    segment_data = audio_data
+                    processing_info = {
+                        "original_duration": duration,
+                        "segment_strategy": "full",
+                        "segment_used": "full",
+                        "segment_start": 0.0,
+                        "target_duration": duration,
+                    }
+                else:
+                    # Fallback: nutze aktuelle Default-Strategie
+                    segment_data, processing_info = self._select_audio_segment(audio_data, self.config.target_sr)
+
+                # Normalisierung
+                if self.config.normalize_audio:
+                    max_val = np.max(np.abs(segment_data))
+                    if max_val > 0:
+                        segment_data = segment_data / max_val
+                        processing_info["normalized"] = True
+                        processing_info["original_max"] = float(max_val)
+
+                processed = ProcessedAudio(
+                    audio_data=segment_data.astype(np.float32),
+                    sample_rate=self.config.target_sr,
+                    duration=len(segment_data) / self.config.target_sr,
+                    source_path=file_path,
+                    processing_info=processing_info
+                )
+
+                self._save_to_cache(cache_key, processed, file_path)
+                # Erneut aus Cache holen, damit cache_path gesetzt ist
+                cached = self._get_cached_audio(cache_key)
+                if cached:
+                    results.append(cached)
+                else:
+                    results.append(processed)
+
+            return results
+        except Exception as e:
+            logger.error(f"Audio multi-segment processing failed for {file_path}: {e}")
+            return results
     
     def process_batch(self, file_paths: List[str], max_workers: Optional[int] = None) -> Dict[str, Optional[ProcessedAudio]]:
         """

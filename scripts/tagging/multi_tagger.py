@@ -55,7 +55,8 @@ class MultiTaggerOrchestrator:
         
         # Initialize components
         try:
-            self.audio_processor = create_audio_processor()
+            # Audio einmal in 16kHz WAV cachen und für alle Kategorien verwenden
+            self.audio_processor = create_audio_processor(enable_compression=False)
             self.logger.info("Audio processor initialized")
         except Exception as e:
             log_exception(self.logger, "audio processor initialization", e)
@@ -83,6 +84,26 @@ class MultiTaggerOrchestrator:
         self.model_config_path = model_config_path
         
         self.logger.info("MultiTaggerOrchestrator initialized successfully")
+
+    def _get_output_policy(self) -> Dict[str, Any]:
+        """Liest Output-Format-Policy (Min/Max je Kategorie, Gesamtlimit) aus prompts-config."""
+        of = self.prompts_config.get("output_format", {})
+        wf = self.prompts_config.get("workflow_config", {})
+        return {
+            "min_per_cat": of.get("min_tags_per_category", {}),
+            "max_per_cat": of.get("max_tags_per_category", {}),
+            "max_total": of.get("max_total_tags", None),
+            "order": wf.get("default_categories", ["genre", "mood", "instruments", "vocal"]),
+        }
+
+    def _get_audio_segments(self) -> List[str]:
+        """Liest die zu verwendenden Audiosegmente aus der Konfiguration."""
+        wf = self.prompts_config.get("workflow_config", {})
+        segments = wf.get("audio_segments", ["middle"])  # default kompatibel
+        # validieren
+        valid = {"start", "middle", "end", "best", "full"}
+        out = [s for s in segments if isinstance(s, str) and s.lower() in valid]
+        return out or ["middle"]
     
     def _load_json_config(self, config_path: str) -> Dict[str, Any]:
         """Lädt JSON-Konfigurationsdatei mit Logging"""
@@ -123,6 +144,85 @@ class MultiTaggerOrchestrator:
         categories = workflow_config.get("default_categories", ["genre", "mood", "instruments", "vocal"])
         self.logger.debug(f"Using categories: {categories}")
         return categories
+
+    def _get_content_retry_policy(self) -> Dict[str, Any]:
+        """Liest die Content-Retry-Policy aus der Konfiguration."""
+        wf = self.prompts_config.get("workflow_config", {})
+        policy = wf.get("content_retry", {})
+        return {
+            "enabled": bool(policy.get("enabled", False)),
+            "max_attempts": int(policy.get("max_attempts", 0)),
+            "delay_seconds": float(policy.get("delay_seconds", 0.25)),
+            "temperature_boost": float(policy.get("temperature_boost", 0.1)),
+            "overrides": policy.get("overrides", {}),
+        }
+
+    def _min_required_for_category(self, category: str) -> int:
+        of = self.prompts_config.get("output_format", {})
+        return int(of.get("min_tags_per_category", {}).get(category, 0))
+
+    def _count_items_in_response(self, category: str, parsed: Optional[Dict[str, Any]]) -> int:
+        if not parsed:
+            return 0
+        # Hilfsfunktion: zählt nur Tags, die nach Normalisierung gültig bleiben
+        def count_normalized(tags: List[str], *, only_vocal_allowed: bool = False) -> int:
+            c = 0
+            for t in tags:
+                nt = self.tag_processor.normalize_tag(str(t).lower())
+                if not nt:
+                    continue
+                if only_vocal_allowed:
+                    # Zähle nur, wenn es wirklich ein gültiger Vocal-Typ ist
+                    if nt not in self.tag_processor.allowed_tags.vocal_types:
+                        continue
+                c += 1
+            return c
+
+        def coerce_list(val: Any) -> List[str]:
+            if isinstance(val, list):
+                return [str(v) for v in val if isinstance(v, (str, int, float))]
+            if isinstance(val, str):
+                # Split an häufigen Trennern
+                import re as _re
+                parts = [_s.strip() for _s in _re.split(r"[,;\n\|/]+", val) if _s.strip()]
+                return parts
+            return []
+
+        if category == "genre":
+            return count_normalized(coerce_list(parsed.get("genres", []) or []))
+        if category == "mood":
+            return count_normalized(coerce_list(parsed.get("mood", []) or []))
+        if category == "instruments":
+            return count_normalized(coerce_list(parsed.get("instruments", []) or []))
+        if category == "vocal":
+            # Leite finalen Vocal-Tag ab und prüfe Normalisierung
+            vt = (parsed.get("vocal_type") or "").strip().lower()
+            vs = (parsed.get("vocal_style") or "").strip().lower()
+            derived: List[str] = []
+            combined = None
+            if vt in ("male", "female"):
+                if "rap" in vs:
+                    combined = f"{vt} rap"
+                elif ("feature" in vs) or ("feat" in vs):
+                    combined = f"{vt} feature vocal"
+                elif any(k in vs for k in ("sing", "vocal")):
+                    combined = f"{vt} vocal"
+                elif "spoken" in vs:
+                    combined = "spoken word"
+                else:
+                    combined = f"{vt} vocal"
+            elif vt == "instrumental":
+                combined = "instrumental"
+            if combined:
+                derived.append(combined)
+            else:
+                if vt and vt not in ("none", "unknown"):
+                    derived.append(vt)
+                # 'rap' alleine nicht als Vocal-Tag verwenden
+                if vs and vs not in ("none", "unknown", "rap"):
+                    derived.append(vs)
+            return count_normalized(derived, only_vocal_allowed=True)
+        return 0
     
     def _execute_category_prompt(self, 
                                 category: str, 
@@ -254,6 +354,8 @@ class MultiTaggerOrchestrator:
                 if vocal_type in ("male", "female"):
                     if "rap" in vocal_style:
                         combined = f"{vocal_type} rap"
+                    elif ("feature" in vocal_style) or ("feat" in vocal_style):
+                        combined = f"{vocal_type} feature vocal"
                     elif any(k in vocal_style for k in ("sing", "vocal")):
                         combined = f"{vocal_type} vocal"
                     elif "spoken" in vocal_style:
@@ -267,7 +369,8 @@ class MultiTaggerOrchestrator:
                     # Fallback auf Einzeltags
                     if vocal_type and vocal_type not in ("none", "unknown"):
                         category_tags.append(f"{vocal_type} vocal" if vocal_type in ("male", "female") else vocal_type)
-                    if vocal_style and vocal_style not in ("none", "unknown"):
+                    # 'rap' alleine nicht als Vocal-Tag verwenden
+                    if vocal_style and vocal_style not in ("none", "unknown", "rap"):
                         category_tags.append(vocal_style)
                 extraction_logger.debug(f"Vocal tags: {category_tags}")
                     
@@ -286,6 +389,157 @@ class MultiTaggerOrchestrator:
         extraction_logger.info(f"Total raw tags extracted: {len(raw_tags)}")
         extraction_logger.debug(f"All raw tags: {raw_tags}")
         return raw_tags
+
+    def _build_tags_by_category(self, responses: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
+        """Extrahiert Tags je Kategorie (lowercased, noch nicht normalisiert)."""
+        by_cat: Dict[str, List[str]] = {"genre": [], "mood": [], "instruments": [], "vocal": [], "production": []}
+
+        def coerce_list(val: Any) -> List[str]:
+            if isinstance(val, list):
+                return [str(v) for v in val if isinstance(v, (str, int, float))]
+            if isinstance(val, str):
+                import re as _re
+                parts = [_s.strip() for _s in _re.split(r"[,;\n\|/]+", val) if _s.strip()]
+                return parts
+            return []
+
+        for category, response in responses.items():
+            if not response:
+                continue
+            if category == "genre":
+                genres = coerce_list(response.get("genres", []))
+                by_cat["genre"] = [str(g).lower() for g in genres if g]
+            elif category == "mood":
+                moods = coerce_list(response.get("mood", []))
+                by_cat["mood"] = [str(m).lower() for m in moods if m]
+            elif category == "instruments":
+                instruments = coerce_list(response.get("instruments", []))
+                by_cat["instruments"] = [str(i).lower() for i in instruments if i]
+            elif category == "vocal":
+                vocal_type = (response.get("vocal_type") or "").strip().lower()
+                vocal_style = (response.get("vocal_style") or "").strip().lower()
+                combined = None
+                if vocal_type in ("male", "female"):
+                    if "rap" in vocal_style:
+                        combined = f"{vocal_type} rap"
+                    elif ("feature" in vocal_style) or ("feat" in vocal_style):
+                        combined = f"{vocal_type} feature vocal"
+                    elif any(k in vocal_style for k in ("sing", "vocal")):
+                        combined = f"{vocal_type} vocal"
+                    elif "spoken" in vocal_style:
+                        combined = "spoken word"
+                elif vocal_type == "instrumental":
+                    combined = "instrumental"
+
+                cat_tags: List[str] = []
+                if combined:
+                    cat_tags.append(combined)
+                else:
+                    if vocal_type and vocal_type not in ("none", "unknown"):
+                        cat_tags.append(f"{vocal_type} vocal" if vocal_type in ("male", "female") else vocal_type)
+                    # 'rap' alleine nicht als Vocal-Tag verwenden
+                    if vocal_style and vocal_style not in ("none", "unknown", "rap"):
+                        cat_tags.append(vocal_style)
+                by_cat["vocal"] = [str(t).lower() for t in cat_tags if t]
+            elif category == "production":
+                ps = response.get("production_style", [])
+                sq = response.get("sound_quality")
+                cat_tags = [str(s).lower() for s in ps if s]
+                if sq:
+                    cat_tags.append(str(sq).lower())
+                by_cat["production"] = cat_tags
+
+        return by_cat
+
+    def _normalize_and_dedupe_by_category(self, by_cat: Dict[str, List[str]]) -> Dict[str, List[str]]:
+        """Normalisiert alle Tags je Kategorie via TagProcessor und entfernt Duplikate (stabile Reihenfolge)."""
+        norm: Dict[str, List[str]] = {}
+        for cat, tags in by_cat.items():
+            seen = set()
+            out: List[str] = []
+            for t in tags:
+                nt = self.tag_processor.normalize_tag(t)
+                if not nt:
+                    continue
+                # Kategoriefilter: Nur Tags behalten, die zur aktuellen Kategorie gehören
+                if cat == "genre" and nt not in self.tag_processor.allowed_tags.genres:
+                    continue
+                if cat == "mood" and nt not in self.tag_processor.allowed_tags.moods:
+                    continue
+                if cat == "instruments" and nt not in self.tag_processor.allowed_tags.instruments:
+                    continue
+                if cat == "vocal" and nt not in self.tag_processor.allowed_tags.vocal_types:
+                    continue
+                if nt in seen:
+                    continue
+                seen.add(nt)
+                out.append(nt)
+            norm[cat] = out
+        return norm
+
+    def _select_final_tags(self, tags_by_category: Dict[str, List[str]]) -> List[str]:
+        """Wendet Min/Max je Kategorie sowie Gesamtlimit an (in der Reihenfolge der Workflow-Kategorien)."""
+        policy = self._get_output_policy()
+        order: List[str] = policy["order"]
+        min_per = policy["min_per_cat"]
+        max_per = policy["max_per_cat"]
+        max_total = policy["max_total"]
+
+        selected: List[tuple[str, str]] = []  # (tag, category)
+        counts: Dict[str, int] = {c: 0 for c in order}
+
+        def add_tag(tag: str, cat: str) -> bool:
+            if any(tag == t for t, _c in selected):
+                return False
+            if max_total is not None and len(selected) >= max_total:
+                return False
+            cap = max_per.get(cat, 999)
+            if counts.get(cat, 0) >= cap:
+                return False
+            selected.append((tag, cat))
+            counts[cat] = counts.get(cat, 0) + 1
+            return True
+
+        # 1) Mindestanzahl je Kategorie erfüllen
+        for cat in order:
+            need = min_per.get(cat, 0)
+            if need <= 0:
+                continue
+            for tag in tags_by_category.get(cat, []):
+                if counts.get(cat, 0) >= need:
+                    break
+                add_tag(tag, cat)
+
+        # 2) Bis Max je Kategorie auffüllen (in Reihenfolge)
+        for cat in order:
+            cap = max_per.get(cat, 999)
+            for tag in tags_by_category.get(cat, []):
+                if counts.get(cat, 0) >= cap:
+                    break
+                add_tag(tag, cat)
+
+        # 3) Sortierung stabil halten: erst nach order, dann nach ursprünglicher Reihenfolge beibehalten
+        order_index = {c: i for i, c in enumerate(order)}
+        selected.sort(key=lambda x: order_index.get(x[1], 999))
+
+        final = [t for t, _c in selected]
+        # 4) Letzte Conflict-Resolution anwenden (kann selten Tags entfernen)
+        final = self.tag_processor.resolve_conflicts(final)
+        # 5) Spezielle Genresortierung: 'hip hop' und 'rap' zusammenhalten, 'hip hop' vor 'rap'
+        try:
+            if "hip hop" in final and "rap" in final:
+                # Entferne beide und füge in gewünschter Reihenfolge wieder ein, nahe der ersten Position von beiden
+                idxs = [i for i, t in enumerate(final) if t in ("hip hop", "rap")]
+                anchor = min(idxs) if idxs else len(final)
+                final = [t for t in final if t not in ("hip hop", "rap")]
+                # Insert at anchor maintaining order hip hop -> rap
+                if anchor <= len(final):
+                    final[anchor:anchor] = ["hip hop", "rap"]
+                else:
+                    final.extend(["hip hop", "rap"])
+        except Exception:
+            pass
+        return final
     
     def process_audio_file(self, 
                           audio_path: str, 
@@ -308,47 +562,172 @@ class MultiTaggerOrchestrator:
         
         file_start = time.time()
         
+        # 0. Audio-Segmente vorbereiten und cachen
+        used_audio_paths: List[str] = []
+        try:
+            segments = self._get_audio_segments()
+            file_logger.info(f"Preparing audio segments: {segments}")
+            processed_list = self.audio_processor.process_audio_segments(audio_path, segments)
+            for p in processed_list:
+                pth = p.cache_path or p.source_path
+                if pth and Path(pth).exists():
+                    used_audio_paths.append(str(Path(pth).resolve()))
+            if not used_audio_paths:
+                # Fallback: single default processing
+                single = self.audio_processor.process_audio_file(audio_path)
+                if single and (single.cache_path and Path(single.cache_path).exists()):
+                    used_audio_paths = [str(Path(single.cache_path).resolve())]
+                else:
+                    used_audio_paths = [audio_path]
+            file_logger.info(f"Using {len(used_audio_paths)} audio file(s) for inference")
+        except Exception as e:
+            log_exception(file_logger, "audio preprocessing", e)
+            file_logger.warning("Falling back to original audio path")
+            used_audio_paths = [audio_path]
+
         # 1. Alle Kategorien ausführen
         categories = self._get_prompt_categories()
         file_logger.info(f"Processing {len(categories)} categories: {categories}")
         
-        responses = {}
+        responses: Dict[str, Optional[Dict[str, Any]]] = {}
         
         for i, category in enumerate(categories, 1):
             file_logger.info(f"[{i}/{len(categories)}] Processing category: {category}")
             category_start = time.time()
-            
-            response = self._execute_category_prompt(category, audio_path, context)
+
+            # Mehrsegment-Unterstützung: direkter Model-Aufruf mit allen Segmenten
+            self._ensure_model_loaded()
+
+            templates = self.prompts_config.get("prompt_templates", {})
+            template = templates.get(category, {})
+            system_prompt = template.get("system_prompt", "")
+            user_prompt = template.get("user_prompt", "")
+            if context and user_prompt:
+                try:
+                    user_prompt = user_prompt.format(**context)
+                except KeyError:
+                    pass
+            full_prompt = f"{system_prompt}\n\n{user_prompt}".strip()
+
+            max_retries = template.get("retry_count", 2)
+            max_tokens = template.get("max_tokens", 60)
+            temperature = template.get("temperature", 0.0)
+
+            response = None
+            content_retry = self._get_content_retry_policy()
+            overrides = (content_retry.get("overrides") or {}).get(category, {})
+            cr_enabled = bool(content_retry.get("enabled", False))
+            cr_attempts = int(overrides.get("max_attempts", content_retry.get("max_attempts", 0)))
+            cr_delay = float(overrides.get("delay_seconds", content_retry.get("delay_seconds", 0.25)))
+            cr_temp_boost = float(overrides.get("temperature_boost", content_retry.get("temperature_boost", 0.1)))
+            base_temp = float(temperature)
+
+            for attempt in range(max_retries + 1):
+                try:
+                    response_start = time.time()
+                    raw_response = self.model_wrapper.chat(
+                        prompt=full_prompt,
+                        audio_files=used_audio_paths,
+                        max_new_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    response_time = time.time() - response_start
+                    file_logger.debug(f"Model response time: {response_time:.2f}s")
+
+                    parsed = parse_category_response(raw_response, category)
+                    log_model_response(get_session_logger(f"Category.{category}"), category, full_prompt, raw_response, parsed)
+                    if parsed:
+                        response = parsed
+                        break
+                except Exception as e:
+                    log_exception(get_session_logger(f"Category.{category}"), f"{category} execution (attempt {attempt + 1})", e)
+                    if attempt < max_retries:
+                        time.sleep(0.2 * (attempt + 1))
+
+            # Content-basierter Retry: auch wenn Parsing komplett scheitert (response=None)
+            need = self._min_required_for_category(category)
+            have = self._count_items_in_response(category, response) if response else 0
+            if cr_enabled and (response is None or have < need):
+                cr_logger = get_session_logger(f"ContentRetry.{category}")
+                reason = "no parse" if response is None else f"have {have}/{need}"
+                cr_logger.info(f"Content retry due to {reason}. Retrying up to {cr_attempts} times…")
+                for i in range(int(cr_attempts)):
+                    try:
+                        if category == "mood":
+                            reinforced_prompt = (
+                                full_prompt
+                                + "\n\nIMPORTANT: Return between 2 and 3 distinct mood items as a JSON array under key \"mood\"."
+                                + " Use concise, single- or two-word English moods. JSON only, no explanations."
+                            )
+                        elif category == "genre":
+                            reinforced_prompt = (
+                                full_prompt
+                                + "\n\nIMPORTANT: Respond ONLY with JSON matching exactly {\"genres\": [\"genre1\", \"genre2\"]}."
+                                + " Provide 2 specific genres. English only. No explanations."
+                            )
+                        elif category == "instruments":
+                            reinforced_prompt = (
+                                full_prompt
+                                + "\n\nIMPORTANT: Respond ONLY with JSON matching exactly {\"instruments\": [\"inst1\", \"inst2\", \"inst3\"]}."
+                                + " Provide 2-3 real instruments (no genres/vocals). English only. No explanations."
+                            )
+                        elif category == "vocal":
+                            reinforced_prompt = (
+                                full_prompt
+                                + "\n\nIMPORTANT: Respond ONLY with JSON like {\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}."
+                                + " Choose exactly one. English only. No explanations."
+                            )
+                        else:
+                            reinforced_prompt = (
+                                full_prompt
+                                + f"\n\nIMPORTANT: Return at least {need} distinct {category} item(s) as per the JSON schema. JSON only, no explanations."
+                            )
+
+                        temp2 = base_temp + float(cr_temp_boost) * (i + 1)
+                        raw_response = self.model_wrapper.chat(
+                            prompt=reinforced_prompt,
+                            audio_files=used_audio_paths,
+                            max_new_tokens=max_tokens,
+                            temperature=temp2
+                        )
+                        parsed2 = parse_category_response(raw_response, category)
+                        log_model_response(cr_logger, category, reinforced_prompt, raw_response, parsed2)
+                        if parsed2:
+                            have2 = self._count_items_in_response(category, parsed2)
+                            if have2 >= need:
+                                response = parsed2
+                                break
+                    except Exception as e:
+                        log_exception(cr_logger, f"content retry {i+1}", e)
+                    time.sleep(float(cr_delay))
+
             responses[category] = response
-            
+
             category_time = time.time() - category_start
             file_logger.info(f"Category {category} completed in {category_time:.2f}s")
-        
-        # 2. Rohe Tags extrahieren
+
+        # 2. Tags je Kategorie extrahieren und normalisieren
         file_logger.info("🏷️  Extracting tags from responses...")
-        raw_tags = self._extract_raw_tags_from_responses(responses)
-        
-        if not raw_tags:
-            file_logger.warning("No tags extracted from any category")
-            return None
-        
-        file_logger.info(f"Extracted {len(raw_tags)} raw tags: {raw_tags}")
-        
-        # 3. Tag-Nachbearbeitung via Helper-Skript
-        file_logger.info("🔄 Processing tags...")
+        by_cat = self._build_tags_by_category(responses)
+        file_logger.debug(f"Tags by category (raw): {by_cat}")
+
+        norm_by_cat = self._normalize_and_dedupe_by_category(by_cat)
+        file_logger.debug(f"Tags by category (normalized): {norm_by_cat}")
+
+        # 3. Auswahl nach Policy treffen
+        file_logger.info("🔄 Balancing tags per policy...")
         tagproc_start = time.time()
-        
-        final_tags = self.tag_processor.process_tags(raw_tags, max_tags=12)
+        final_tags = self._select_final_tags(norm_by_cat)
         processing_time = time.time() - tagproc_start
-        
+
         if not final_tags:
-            file_logger.warning("No valid tags after processing")
+            file_logger.warning("No valid tags after selection")
             return None
         
         # Tag-Statistiken
         tag_stats = self.tag_processor.get_tag_statistics(final_tags)
         total_time = time.time() - file_start
-        
+
         file_logger.info(f"✅ Processing completed in {total_time:.2f}s")
         file_logger.info(f"Final tags ({len(final_tags)}): {final_tags}")
         file_logger.info(f"Tag distribution: {tag_stats}")

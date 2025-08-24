@@ -38,32 +38,43 @@ class JSONParser:
         
         text = text.strip()
         
-        # Strategy 1: Direct JSON (starts and ends with braces)
+        # Strategy 1: Direct JSON (object or array)
+        # 1a) JSON object
         if text.startswith('{') and text.endswith('}'):
             result = JSONParser._try_parse_json(text)
             if result:
-                return result
+                return JSONParser._normalize_result_keys(result, category)
+        # 1b) JSON array → wrap according to category
+        if text.startswith('[') and text.endswith(']'):
+            wrapped = JSONParser._try_parse_list_and_wrap(text, category)
+            if wrapped:
+                return wrapped
         
         # Strategy 2: JSON in fenced code blocks
-        result = JSONParser._extract_from_code_blocks(text)
+        result = JSONParser._extract_from_code_blocks(text, category)
         if result:
-            return result
+            return JSONParser._normalize_result_keys(result, category)
         
         # Strategy 3: Find JSON anywhere in text
-        result = JSONParser._find_json_in_text(text)
+        result = JSONParser._find_json_in_text(text, category)
         if result:
-            return result
+            return JSONParser._normalize_result_keys(result, category)
+
+        # Strategy 3b: Find QUOTED JSON anywhere (e.g., "{\"mood\":[...]}" or "[\"happy\"]")
+        result = JSONParser._find_quoted_json_in_text(text, category)
+        if result:
+            return JSONParser._normalize_result_keys(result, category)
         
         # Strategy 4: Category-specific regex fallbacks
         if category:
             result = JSONParser._category_specific_fallback(text, category)
             if result:
-                return result
+                return JSONParser._normalize_result_keys(result, category)
         
         # Strategy 5: Attempt to construct JSON from text patterns
         result = JSONParser._construct_from_patterns(text, category)
         if result:
-            return result
+            return JSONParser._normalize_result_keys(result, category)
         
         logger.warning(f"Failed to extract JSON from text: {text[:100]}...")
         return None
@@ -74,7 +85,17 @@ class JSONParser:
         try:
             obj = json.loads(text)
         except json.JSONDecodeError:
-            return None
+            # Zweiter Versuch: Hufiger LLM-Fehler: Backslash-escaped Quotes ohne Einbettung
+            # Beispiel: {\"mood\": [\"excited\", \"relaxed\"]}
+            # Versuche \\"  " zu entspannen und erneut zu parsen
+            if '\\"' in text:
+                try:
+                    fixed = text.replace('\\"', '"')
+                    obj = json.loads(fixed)
+                except Exception:
+                    return None
+            else:
+                return None
         # Falls ein JSON-String enthalten ist, erneut parsen
         if isinstance(obj, str):
             try:
@@ -87,30 +108,39 @@ class JSONParser:
         return obj if isinstance(obj, dict) else None
     
     @staticmethod
-    def _extract_from_code_blocks(text: str) -> Optional[Dict[str, Any]]:
-        """Extrahiert JSON aus ```json Code-Blöcken"""
+    def _extract_from_code_blocks(text: str, category: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Extrahiert JSON aus ```json Code-Blöcken (Objekt oder Array)"""
         patterns = [
-            r'```json\s*(\{.*?\})\s*```',
-            r'```\s*(\{.*?\})\s*```',  
-            r'`(\{.*?\})`'
+            r'```json\s*(\{[\s\S]*?\})\s*```',
+            r'```\s*(\{[\s\S]*?\})\s*```',
+            r'```json\s*(\[[\s\S]*?\])\s*```',
+            r'```\s*(\[[\s\S]*?\])\s*```',
+            r'`(\{[\s\S]*?\})`',
+            r'`(\[[\s\S]*?\])`'
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
             for match in matches:
+                # Try object
                 result = JSONParser._try_parse_json(match)
                 if result:
                     return result
+                # Try array wrap
+                wrapped = JSONParser._try_parse_list_and_wrap(match, category)
+                if wrapped:
+                    return wrapped
         
         return None
     
     @staticmethod
-    def _find_json_in_text(text: str) -> Optional[Dict[str, Any]]:
-        """Findet JSON-ähnliche Strukturen im Text"""
+    def _find_json_in_text(text: str, category: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Findet JSON-ähnliche Strukturen im Text (Objekte und Arrays)"""
         # Suche nach {key: value} Patterns
         json_patterns = [
             r'\{[^{}]*\}',  # Simple flat JSON
             r'\{[^{}]*\{[^{}]*\}[^{}]*\}',  # Nested JSON (one level)
+            r'\[[^\[\]]*\]',  # Simple flat array
         ]
         
         for pattern in json_patterns:
@@ -121,6 +151,9 @@ class JSONParser:
                 result = JSONParser._try_parse_json(cleaned)
                 if result:
                     return result
+                wrapped = JSONParser._try_parse_list_and_wrap(cleaned, category)
+                if wrapped:
+                    return wrapped
         
         return None
     
@@ -184,7 +217,7 @@ class JSONParser:
         mood_keywords = [
             "happy", "sad", "energetic", "calm", "aggressive", "peaceful", 
             "melancholic", "uplifting", "dramatic", "romantic", "mysterious", 
-            "playful", "intense", "relaxing", "dark", "bright"
+            "playful", "intense", "relaxing", "relaxed", "excited", "dark", "bright"
         ]
         
         energy_keywords = {
@@ -251,6 +284,99 @@ class JSONParser:
             "vocal_type": vocal_type,
             "vocal_style": vocal_style
         }
+
+    @staticmethod
+    def _try_parse_list_and_wrap(text: str, category: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Parst eine JSON-Liste und wrapped sie gemäß Kategorie zu einem Dict."""
+        if not category:
+            return None
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(obj, list):
+            key = None
+            cat = category.lower()
+            if cat == "genre":
+                key = "genres"
+            elif cat == "mood":
+                key = "mood"
+            elif cat == "instruments":
+                key = "instruments"
+            elif cat == "vocal":
+                # Für Vocal-Listen nicht üblich; ignorieren
+                return None
+            if key:
+                # Nur Strings/skalare Werte behalten
+                vals = [v for v in obj if isinstance(v, (str, int, float))]
+                return {key: vals}
+        return None
+
+    @staticmethod
+    def _find_quoted_json_in_text(text: str, category: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Sucht nach in Anführungszeichen eingebettetem (escaped) JSON und parst doppelt."""
+        # Quoted object
+        patterns = [
+            r'"(\{[\s\S]*?\})"',
+            r'"(\[[\s\S]*?\])"',
+        ]
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            for m in matches:
+                # Erster Pass: Unescape via json.loads auf der gequoteten Zeichenkette
+                try:
+                    unescaped = json.loads(f'"{m}"')  # macht aus \" -> "
+                except Exception:
+                    continue
+                # Zweiter Pass: Als JSON interpretieren
+                obj = JSONParser._try_parse_json(unescaped)
+                if obj:
+                    return obj
+                wrapped = JSONParser._try_parse_list_and_wrap(unescaped, category)
+                if wrapped:
+                    return wrapped
+        return None
+
+    @staticmethod
+    def _normalize_result_keys(obj: Optional[Dict[str, Any]], category: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Normalisiert Keys im Ergebnis an erwartete Kategorienamen (toleriert Singular/Synonyme)."""
+        if not isinstance(obj, dict) or not category:
+            return obj if isinstance(obj, dict) else None
+        cat = category.lower()
+        out = dict(obj)
+
+        def first_present(keys: list[str]) -> Optional[str]:
+            for k in keys:
+                if k in out:
+                    return k
+            return None
+
+        def coerce_list(val):
+            if isinstance(val, list):
+                return [v for v in val if isinstance(v, (str, int, float))]
+            if isinstance(val, (str, int, float)):
+                return [val]
+            return []
+
+        if cat == "genre":
+            key = first_present(["genres", "genre", "styles", "style", "music_styles", "music_style"])
+            if key and key != "genres":
+                out["genres"] = coerce_list(out.get(key))
+        elif cat == "mood":
+            key = first_present(["mood", "moods", "emotions", "feelings"]) 
+            if key and key != "mood":
+                out["mood"] = coerce_list(out.get(key))
+        elif cat == "instruments":
+            key = first_present(["instruments", "instrument", "instrumentation", "sounds", "sound_sources"]) 
+            if key and key != "instruments":
+                out["instruments"] = coerce_list(out.get(key))
+        elif cat == "vocal":
+            # Vereinheitliche auf 'vocal_type'/'vocal_style' wenn andere Namen verwendet werden
+            if "vocal" in out and "vocal_type" not in out:
+                out["vocal_type"] = out.get("vocal")
+            if "vocals" in out and "vocal_type" not in out:
+                out["vocal_type"] = out.get("vocals")
+        return out
     
     @staticmethod 
     def _construct_from_patterns(text: str, category: Optional[str]) -> Optional[Dict[str, Any]]:

@@ -259,7 +259,9 @@ class TagProcessor:
         
         # Sammle Vocal-Tags separat
         for tag in tags:
-            if any(vocal in tag for vocal in ["vocal", "rap", "spoken", "singing"]):
+            # Als Vocal zählen nur: explizite Vocal-Typen oder klare Begriffe ('vocal', 'spoken', 'singing').
+            # 'rap' alleine ist ein Genre und darf hier nicht als Vocal zählen.
+            if (tag in self.allowed_tags.vocal_types) or any(v in tag for v in ["vocal", "spoken", "singing"]):
                 vocal_tags.append(tag)
                 logger.debug(f"Found vocal tag: {tag}")
             else:

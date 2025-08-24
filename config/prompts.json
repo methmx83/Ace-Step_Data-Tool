@@ -11,17 +11,17 @@
       "retry_count": 2
     },
     "mood": {
-      "system_prompt": "Analyze the emotional characteristics and mood of this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"mood\": [\"mood1\", \"mood2\", \"mood3\"]}\n\nMood categories:\n- Emotional tone (happy, sad, nostalgic, aggressive, peaceful, etc.)\n- Maximum 3 mood descriptors\n- Use English terms only.",
+      "system_prompt": "Analyze the audio and return between 2 and 3 mood tags.\nRespond ONLY with valid JSON in this exact format:\n{\"mood\": [\"mood1\", \"mood2\", \"mood3\"]}\n- Provide at least 2 and at most 3 items.\n- Use only concise, single-word or short moods.\n- English terms only.",
       "user_prompt": "",
       "expected_format": {
         "mood": ["string", "string", "string"]
       },
-      "max_tokens": 65,
+      "max_tokens": 64,
       "temperature": 0.3,
-      "retry_count": 2
+      "retry_count": 0
     },
     "instruments": {
-      "system_prompt": "Identify the main instruments and sounds in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\"]}\n\nFocus on:\n- Clearly audible instruments\n- The 3-4 most prominent instruments\n- Use standard instrument names (guitar, drums, piano, synthesizer, etc.)\n- Include electronic elements if present\n- Use English names only.\n- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beats'). Only actual instruments.",
+      "system_prompt": "Identify the main instruments and sounds in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\"]}\n\nFocus on:\n- Clearly audible instruments\n- The 3-4 most prominent instruments\n- Use standard instrument names \n- Include electronic elements if present\n- Use English names only.\n- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beats'). Only actual instruments.",
       "user_prompt": "",
       "expected_format": {
         "instruments": ["string", "string", "string", "string"]
@@ -30,38 +30,14 @@
       "temperature": 0.2,
       "retry_count": 2
     },
-    "technical": {
-      "system_prompt": "Analyze the technical and musical characteristics of this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"key\": \"C major\", \"tempo\": \"slow|medium|fast\", \"time_signature\": \"4/4\"}\n\nAnalyze:\n- Musical key (e.g., \"C major\", \"A minor\", \"F# major\")\n- Tempo feel: slow, medium, fast\n- Time signature (usually 4/4, 3/4, etc.)\n- Use English notation for keys.",
-      "user_prompt": "Estimated BPM: {bpm}",
+    "vocal": {
+      "system_prompt": "Analyze the vocal characteristics in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}\n\nChoose exactly ONE from the list above. Use English terms only.",
+      "user_prompt": "",
       "expected_format": {
-        "key": "string",
-        "tempo": "string",
-        "time_signature": "string"
+        "vocal_type": "string"
       },
       "max_tokens": 45,
       "temperature": 0.2,
-      "retry_count": 2
-    },
-    "vocal": {
-      "system_prompt": "Analyze the vocal characteristics in this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"vocal_type\": \"male|female|mixed|instrumental\", \"vocal_style\": \"style_description\"}\n\nIdentify:\n- Vocal type: male, female, mixed, or instrumental (no vocals)\n- Vocal style: singing style, rap, spoken, etc.\n- If instrumental, set vocal_type to \"instrumental\" and vocal_style to \"none\"\n- Use English terms only.",
-      "user_prompt": "",
-      "expected_format": {
-        "vocal_type": "string",
-        "vocal_style": "string"
-      },
-      "max_tokens": 55,
-      "temperature": 0.2,
-      "retry_count": 2
-    },
-    "production": {
-      "system_prompt": "Analyze the production and sound characteristics of this audio.\nRespond ONLY with valid JSON in this exact format:\n{\"production_style\": [\"style1\", \"style2\"], \"sound_quality\": \"lo-fi|hi-fi|vintage|modern\"}\n\nAnalyze:\n- Production style (e.g., \"polished\", \"raw\", \"electronic\", \"organic\")\n- Sound quality: lo-fi, hi-fi, vintage, modern\n- Maximum 2 production style descriptors\n- Use English terms only.",
-      "user_prompt": "",
-      "expected_format": {
-        "production_style": ["string", "string"],
-        "sound_quality": "string"
-      },
-      "max_tokens": 55,
-      "temperature": 0.3,
       "retry_count": 2
     }
   },
@@ -70,20 +46,35 @@
     "request_delay_seconds": 0.1,
     "max_parallel_requests": 1,
     "fallback_enabled": true,
-    "combine_duplicates": true
+  "combine_duplicates": true,
+  "audio_segments": ["best", "middle"],
+  "content_retry": {
+    "enabled": true,
+    "max_attempts": 2,
+    "delay_seconds": 0.3,
+    "temperature_boost": 0.1,
+    "overrides": {
+        "mood": { "max_attempts": 3, "temperature_boost": 0.15 }
+      }
+  }
   },
   "output_format": {
     "tag_separator": ", ",
     "prefix_bpm": "bpm-",
     "prefix_key": "key-",
     "lowercase_tags": true,
+    "min_tags_per_category": {
+      "genre": 2,
+      "mood": 2,
+      "instruments": 2,
+      "vocal": 1
+    },
     "max_tags_per_category": {
       "genre": 2,
-      "mood": 3, 
-      "instruments": 4,
-      "technical": 3,
-      "vocal": 2,
-      "production": 2
-    }
+      "mood": 3,
+      "instruments": 3,
+      "vocal": 1
+    },
+    "max_total_tags": 9
   }
 }

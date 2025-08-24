@@ -187,13 +187,15 @@ class Qwen2AudioWrapper:
             prompt = "Analyze this audio and generate comprehensive musical tags as JSON with genre, mood, instruments, and technical characteristics."
         
         # Build the ChatML conversation structure
+        # Build audio content entries: one per audio clip so tokens match
+        audio_contents = []
+        if audio_data:
+            audio_contents = [{"type": "audio", "audio_url": "file://local"} for _ in range(len(audio_data))]
+
         conversation = [{
             "role": "user",
             "content": (
-                # Audio component when present
-                ([{"type": "audio", "audio_url": "file://local"}] if audio_data else [])
-                # Text component
-                + [{"type": "text", "text": prompt}]
+                audio_contents + [{"type": "text", "text": prompt}]
             ),
         }]
         

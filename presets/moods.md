@@ -8,6 +8,8 @@
 - grunge
 - hardrock
 - hip hop
+- rap
+- europop
 - new wave
 - film scores
 - soundtrack
@@ -59,7 +61,6 @@
 - heavy metal
 - metal
 - nu metal
-- rap
 - blues
 - film score
 - world
@@ -104,6 +105,7 @@
 - bright
 - catchy
 - charm
+- excited
 - cheerful
 - childlike
 - chilled
@@ -135,7 +137,6 @@
 - ethereal
 - euphoric
 - evolving
-- exciting
 - expansive
 - experimental
 - family
@@ -214,6 +215,7 @@
 - storytelling
 - narrative
 - gangsta attitude
+- uplifting
 
 ## Instrument:
 - 808
@@ -320,6 +322,5 @@
 - spoken word
 - male feature vocal
 - female feature vocal
-- singing
-- rap
 - instrumental
+  
