@@ -25,6 +25,9 @@ class TagCategories:
     moods: Set[str] 
     instruments: Set[str]
     vocal_types: Set[str]
+    keys: Set[str]
+    vocal_fx: Set[str]
+    rap_style: Set[str]
     
     @classmethod
     def from_moods_file(cls, moods_file_path: str) -> 'TagCategories':
@@ -37,11 +40,15 @@ class TagCategories:
             moods = cls._extract_section(content, "Mood:")
             instruments = cls._extract_section(content, "Instrument:")
             vocal_types = cls._extract_section(content, "Vocal Typ:")
+            keys = cls._extract_section(content, "Key:")
+            vocal_fx = cls._extract_section(content, "Vocal Fx:")
+            rap_style = cls._extract_section(content, "Rap Style:")
             
             logger.info(f"Loaded tags: {len(genres)} genres, {len(moods)} moods, "
-                       f"{len(instruments)} instruments, {len(vocal_types)} vocal types")
-            
-            return cls(genres=genres, moods=moods, instruments=instruments, vocal_types=vocal_types)
+                       f"{len(instruments)} instruments, {len(vocal_types)} vocal types, "
+                       f"{len(keys)} keys, {len(vocal_fx)} vocal_fx")
+
+            return cls(genres=genres, moods=moods, instruments=instruments, vocal_types=vocal_types, keys=keys, vocal_fx=vocal_fx, rap_style=rap_style)
             
         except Exception as e:
             logger.error(f"Failed to load allowed tags from {moods_file_path}: {e}")
@@ -78,7 +85,10 @@ class TagCategories:
             genres={"electronic", "rock", "pop", "ambient", "experimental"},
             moods={"energetic", "calm", "dark", "bright", "emotional"},
             instruments={"guitar", "piano", "drums", "bass", "synthesizer"},
-            vocal_types={"male vocal", "female vocal", "instrumental"}
+            vocal_types={"male vocal", "female vocal", "instrumental"},
+            keys={"major", "minor"},
+            vocal_fx={"autotune", "harmony"},
+            rap_style={"trap", "lyrical rap", "mumble rap"}
         )
 
 class TagProcessor:
@@ -159,17 +169,24 @@ class TagProcessor:
     
     def _is_allowed_tag(self, tag: str) -> bool:
         """Prüft ob Tag in erlaubten Listen steht"""
-        return (tag in self.allowed_tags.genres or 
-                tag in self.allowed_tags.moods or
-                tag in self.allowed_tags.instruments or
-                tag in self.allowed_tags.vocal_types)
+        return (
+            tag in self.allowed_tags.genres
+            or tag in self.allowed_tags.moods
+            or tag in self.allowed_tags.instruments
+            or tag in self.allowed_tags.vocal_types
+            or tag in self.allowed_tags.keys
+            or tag in self.allowed_tags.vocal_fx
+            or tag in self.allowed_tags.rap_style
+        )
     
     def _find_fuzzy_match(self, tag: str) -> Optional[str]:
         """Abwärtskompatible leichte Fuzzy-Varianten (beibehalten, aber Alias-Map bevorzugen)."""
         all_allowed = (self.allowed_tags.genres |
                        self.allowed_tags.moods |
                        self.allowed_tags.instruments |
-                       self.allowed_tags.vocal_types)
+                       self.allowed_tags.vocal_types |
+                       self.allowed_tags.keys |
+                       self.allowed_tags.vocal_fx)
         for allowed in all_allowed:
             if tag in allowed or allowed in tag:
                 if abs(len(tag) - len(allowed)) <= 3:
@@ -204,7 +221,10 @@ class TagProcessor:
         all_allowed = list((self.allowed_tags.genres |
                             self.allowed_tags.moods |
                             self.allowed_tags.instruments |
-                            self.allowed_tags.vocal_types))
+                            self.allowed_tags.vocal_types |
+                            self.allowed_tags.keys |
+                            self.allowed_tags.vocal_fx |
+                            self.allowed_tags.rap_style))
         best = None
         best_score = 0.0
         for cand in all_allowed:
@@ -398,30 +418,40 @@ class TagProcessor:
         add("vocal", "singing")
         add("spoken", "spoken word")
         add("spokenword", "spoken word")
-
         # Nur Aliase behalten, deren Ziel in erlaubten Tags vorhanden ist
-        allowed_all = (self.allowed_tags.genres |
-                       self.allowed_tags.moods |
-                       self.allowed_tags.instruments |
-                       self.allowed_tags.vocal_types)
+        allowed_all = (
+            self.allowed_tags.genres
+            | self.allowed_tags.moods
+            | self.allowed_tags.instruments
+            | self.allowed_tags.vocal_types
+            | self.allowed_tags.keys
+            | self.allowed_tags.vocal_fx
+            | self.allowed_tags.rap_style
+        )
         return {k: v for k, v in alias.items() if v in allowed_all}
     
     def get_tag_statistics(self, tags: List[str]) -> Dict[str, int]:
         """Gibt Statistiken über Tag-Kategorien zurück"""
-        stats = {"genre": 0, "mood": 0, "instrument": 0, "vocal": 0, "other": 0}
-        
+        stats = {"genre": 0, "mood": 0, "instrument": 0, "vocal": 0, "key": 0, "vocal_fx": 0, "rap_style": 0, "other": 0}
+
         for tag in tags:
             if tag in self.allowed_tags.genres:
                 stats["genre"] += 1
             elif tag in self.allowed_tags.moods:
-                stats["mood"] += 1  
+                stats["mood"] += 1
             elif tag in self.allowed_tags.instruments:
                 stats["instrument"] += 1
             elif tag in self.allowed_tags.vocal_types:
                 stats["vocal"] += 1
+            elif tag in self.allowed_tags.keys:
+                stats["key"] += 1
+            elif tag in self.allowed_tags.vocal_fx:
+                stats["vocal_fx"] += 1
+            elif tag in self.allowed_tags.rap_style:
+                stats["rap_style"] += 1
             else:
                 stats["other"] += 1
-        
+
         return stats
 
 

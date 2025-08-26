@@ -30,6 +30,43 @@ class JSONParser:
         text = text.strip()
         cat = (category or "").strip().lower() or None
 
+        # Quick pass: robustly handle escaped or double-escaped JSON inside strings,
+        # examples we have seen in logs: '{\"Rap Style\": [\"mumble rap\"]}' or
+        # '"{\"Rap Style\": [\"oldschool\"]}"'
+        try:
+            candidate = text
+            # if wrapped in outer quotes, strip them first
+            if candidate.startswith('"') and candidate.endswith('"'):
+                candidate = candidate[1:-1]
+
+            # Try several unescape strategies iteratively
+            for _ in range(3):
+                cand_strip = candidate.strip()
+                if (cand_strip.startswith('{') and cand_strip.endswith('}')) or (cand_strip.startswith('[') and cand_strip.endswith(']')):
+                    obj = JSONParser._try_parse_json(cand_strip)
+                    if obj:
+                        return JSONParser._normalize_result_keys(obj, cat)
+
+                # replace common escaped-quote sequences
+                if '\\"' in candidate:
+                    candidate = candidate.replace('\\"', '"')
+                    continue
+
+                # try unicode-escape decoding (handles sequences like \uXXXX and escaped quotes)
+                try:
+                    decoded = candidate.encode('utf-8').decode('unicode_escape')
+                    if decoded != candidate:
+                        candidate = decoded
+                        continue
+                except Exception:
+                    pass
+
+                # no change -> break early
+                break
+        except Exception:
+            # don't fail here; fall back to existing strategies
+            pass
+
         # 1) Direktes JSON-Objekt
         if text.startswith("{") and text.endswith("}"):
             obj = JSONParser._try_parse_json(text)
@@ -96,8 +133,16 @@ class JSONParser:
     def _clean_json_text(text: str) -> str:
         # Entferne trailing commas
         text = re.sub(r",(\s*[}\]])", r"\1", text)
-        # Quote unquoted keys (heuristisch)
-        text = re.sub(r"(?m)([,{\s])([A-Za-z_][A-Za-z0-9_\-]*)\s*:\s*", r"\1""\2"": ", text)
+        # Quote unquoted keys (heuristisch) — only when key is not already quoted
+        # matches prefix (start, { or ,) + optional whitespace + unquoted key + colon
+        def _quote_unquoted(m):
+            return f"{m.group('prefix')}\"{m.group('key')}\": "
+
+        text = re.sub(
+            r'(?m)(?P<prefix>[\{,\s])(?P<key>[A-Za-z_][A-Za-z0-9_\-]*)\s*:\s*',
+            _quote_unquoted,
+            text,
+        )
         # Single quotes → double quotes
         text = re.sub(r"'", '"', text)
         return text
@@ -146,6 +191,9 @@ class JSONParser:
             "moods": set(),
             "instruments": set(),
             "vocal_types": set(),
+            "keys": set(),
+            "vocal_fx": set(),
+            "rap_style": set(),
         }
 
         # Kandidatenpfade für presets/moods.md
@@ -206,11 +254,17 @@ class JSONParser:
         instruments = get_section(["instrument", "instruments"]) or []
         # Ergänze deutsche Schreibweise "Vocal Typ"
         vocals = get_section(["vocal", "vocals", "vocal type", "vocal types", "vocal typ"]) or []
+        keys = get_section(["key", "keys"]) or []
+        vfx = get_section(["vocal fx", "vocal-fx", "vocal fx:", "vocal fx"]) or []
+        rap_style = get_section(["rap style", "rap-style", "rap style:"]) or []
 
         allowed["genres"].update(genres)
         allowed["moods"].update(moods)
         allowed["instruments"].update(instruments)
         allowed["vocal_types"].update(vocals)
+        allowed["keys"].update(keys)
+        allowed["vocal_fx"].update(vfx)
+        allowed["rap_style"].update(rap_style)
 
         # Normalisierung: hip hop, Leerzeichen/Bindestrich
         normed_genres = set()
@@ -265,6 +319,12 @@ class JSONParser:
             return JSONParser._parse_instruments_fallback(text)
         if category == "vocal":
             return JSONParser._parse_vocal_fallback(text)
+        if category == "key":
+            return JSONParser._parse_key_fallback(text)
+        if category == "vocal_fx" or category == "vocal-fx":
+            return JSONParser._parse_vocal_fx_fallback(text)
+        if category == "rap_style" or category == "rap-style" or category == "rapstyle":
+            return JSONParser._parse_rap_style_fallback(text)
         return None
 
     @staticmethod
@@ -336,6 +396,80 @@ class JSONParser:
         return {"vocal_type": vocal_type, "vocal_style": vocal_style}
 
     @staticmethod
+    def _parse_key_fallback(text: str) -> Optional[Dict[str, Any]]:
+        t = text.lower()
+        if "major" in t and "minor" not in t:
+            return {"key": "major"}
+        if "minor" in t and "major" not in t:
+            return {"key": "minor"}
+        # try pattern like 'in C major' or 'C minor'
+        m = re.search(r"\b(?:in|key of)\s+[A-G](?:#|b)?\s+(major|minor)\b", t)
+        if m:
+            return {"key": m.group(1)}
+        # last resort: look for standalone words
+        if re.search(r"\bmajor\b", t):
+            return {"key": "major"}
+        if re.search(r"\bminor\b", t):
+            return {"key": "minor"}
+        return None
+
+    @staticmethod
+    def _parse_vocal_fx_fallback(text: str) -> Optional[Dict[str, Any]]:
+        t = text.lower()
+        allowed = JSONParser._get_allowed().get("vocal_fx", set())
+        found = []
+        # keywords -> normalize
+        fx_keywords = {
+            "autotune": ["autotune", "auto-tune", "auto tune", "tune"],
+            "harmony": ["harmony", "harmonies", "vocal-harmony"],
+            "doubling": ["doubl", "doubling", "doubled"],
+            "pitch-up": ["pitch up", "pitch-up", "high-pitch", "high pitch"],
+            "pitch-down": ["pitch down", "pitch-down", "low-pitch", "low pitch"],
+            "vocoder": ["vocoder"],
+            "formant-shift": ["formant", "formant-shift"],
+            "de-esser": ["de-esser", "deesser"],
+            "reverb": ["reverb"],
+            "delay": ["delay"],
+        }
+        for k, kws in fx_keywords.items():
+            for kw in kws:
+                if kw in t and k not in found:
+                    # prefer allowed label if present
+                    if k in allowed:
+                        found.append(k)
+                    else:
+                        # try to map common variants to allowed set
+                        for a in allowed:
+                            if k in a or a in k:
+                                found.append(a)
+                                break
+                        else:
+                            found.append(k)
+        if found:
+            return {"vocal_fx": found[:3]}
+        # fallback: search allowed list by token
+        found2 = JSONParser._find_allowed_in_text(t, allowed, limit=3)
+        if found2:
+            return {"vocal_fx": found2}
+        return None
+
+    @staticmethod
+    def _parse_rap_style_fallback(text: str) -> Optional[Dict[str, Any]]:
+        t = text.lower()
+        allowed = JSONParser._get_allowed().get("rap_style", set())
+        if not allowed:
+            return None
+        found = JSONParser._find_allowed_in_text(t, allowed, limit=2)
+        if found:
+            return {"rap_style": found}
+        # simple heuristics
+        if re.search(r"\btrap\b", t):
+            return {"rap_style": ["trap"]}
+        if re.search(r"\bmumble\b", t):
+            return {"rap_style": ["mumble rap"]}
+        return None
+
+    @staticmethod
     def _try_parse_list_and_wrap(text: str, category: Optional[str]) -> Optional[Dict[str, Any]]:
         if not text:
             return None
@@ -346,7 +480,7 @@ class JSONParser:
         except Exception:
             return None
         cat = (category or "").lower() if category else None
-        key_map = {"genre": "genres", "mood": "mood", "instruments": "instruments", "vocal": "vocal"}
+        key_map = {"genre": "genres", "mood": "mood", "instruments": "instruments", "vocal": "vocal", "key": "key", "vocal_fx": "vocal_fx", "rap_style": "rap_style"}
         if cat in key_map:
             return {key_map[cat]: arr}
         return {"data": arr}
@@ -384,13 +518,22 @@ class JSONParser:
             "vocal_type": "vocal_type",
             "vocalstyle": "vocal_style",
             "vocal_style": "vocal_style",
+            # keys / vocal fx / rap style variants
+            "key": "key",
+            "keys": "key",
+            "vocalfx": "vocal_fx",
+            "vocal-fx": "vocal_fx",
+            "vocal_fx": "vocal_fx",
+            "rapstyle": "rap_style",
+            "rap-style": "rap_style",
+            "rap_style": "rap_style",
         }
         normalized: Dict[str, Any] = {}
         for k, v in obj.items():
             nk = mapping.get(k.lower().replace(" ", ""), k)
             normalized[nk] = v
 
-        for list_key in ("genres", "mood", "instruments"):
+        for list_key in ("genres", "mood", "instruments", "rap_style", "vocal_fx", "key"):
             if list_key in normalized and not isinstance(normalized[list_key], list):
                 normalized[list_key] = [normalized[list_key]]
 
@@ -429,6 +572,10 @@ class JSONParser:
         if cat == "vocal":
             voc = JSONParser._parse_vocal_fallback(text)
             return voc
+        if cat == "key":
+            return JSONParser._parse_key_fallback(text)
+        if cat == "vocal_fx" or cat == "vocal-fx":
+            return JSONParser._parse_vocal_fx_fallback(text)
         return None
 
 

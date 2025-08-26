@@ -32,7 +32,7 @@ class TagPipeline:
         return []
 
     def build_by_category(self, responses: Dict[str, Optional[Dict[str, Any]]]) -> Dict[str, List[str]]:
-        by_cat: Dict[str, List[str]] = {"genre": [], "mood": [], "instruments": [], "vocal": [], "production": []}
+        by_cat: Dict[str, List[str]] = {"genre": [], "mood": [], "instruments": [], "vocal": [], "key": [], "vocal_fx": [], "rap_style": [], "production": []}
         for category, response in responses.items():
             if not response:
                 continue
@@ -69,6 +69,20 @@ class TagPipeline:
                     if vocal_style and vocal_style not in ("none", "unknown", "rap"):
                         cat_tags.append(vocal_style)
                 by_cat["vocal"] = [str(t).lower() for t in cat_tags if t]
+            elif category == "key":
+                # key usually returns a single string: 'major' or 'minor'
+                k = response.get("key") or response.get("keys")
+                if isinstance(k, list):
+                    ks = [str(x).lower().strip() for x in k if x]
+                else:
+                    ks = [str(k).lower().strip()] if k else []
+                by_cat["key"] = [x for x in ks if x]
+            elif category == "vocal_fx":
+                vfx = self._coerce_list(response.get("vocal_fx", []))
+                by_cat["vocal_fx"] = [str(v).lower() for v in vfx if v]
+            elif category == "rap_style" or category == "rap-style" or category == "rapstyle":
+                rs = self._coerce_list(response.get("rap_style", []) or response.get("rapstyle", []) )
+                by_cat["rap_style"] = [str(r).lower() for r in rs if r]
             elif category == "production":
                 ps = self._coerce_list(response.get("production_style", []))
                 sq = response.get("sound_quality")
@@ -86,7 +100,12 @@ class TagPipeline:
             seen = set()
             out: List[str] = []
             for t in tags:
-                nt = self.tp.normalize_tag(t)
+                # Special-case: key should not be passed through general normalize_tag because
+                # TagProcessor historically drops 'major'/'minor' in transformations. Validate directly.
+                if cat == "key":
+                    nt = str(t).lower().strip()
+                else:
+                    nt = self.tp.normalize_tag(t)
                 if not nt:
                     continue
                 if cat == "genre" and nt not in self.tp.allowed_tags.genres:
@@ -96,6 +115,12 @@ class TagPipeline:
                 if cat == "instruments" and nt not in self.tp.allowed_tags.instruments:
                     continue
                 if cat == "vocal" and nt not in self.tp.allowed_tags.vocal_types:
+                    continue
+                if cat == "key" and nt not in self.tp.allowed_tags.keys:
+                    continue
+                if cat == "vocal_fx" and nt not in self.tp.allowed_tags.vocal_fx:
+                    continue
+                if cat == "rap_style" and nt not in self.tp.allowed_tags.rap_style:
                     continue
                 if nt in seen:
                     continue

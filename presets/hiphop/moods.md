@@ -1,118 +1,46 @@
 ## Genre:
-- industrial
-- indie pop
-- hybrid orchestral
-- synth pop
-- hip hop
+- hip-hop
 - rap
-- europop
-- new wave
-- film scores
-- singer songwriter
-- trap
-- punk
-- psychedelic
-- trip hop
+- trip-hop
 - r&b
 - reggae
 - reggaeton
-- cinematic
-- chill-out
+- club hip-hop
+- grime
+- trap
+- underground hip-hop
+- old-school hip-hop
+- boom-bap
 - pop
-- 80's
-- ambient rock
-- ambiance
+- europop
+- dirtysouth
+- conscious hip-hop
+- crunk
+- lo-fi hip-hop
 - drill
-- drum'n'bass
-- dancehall
-- electronic
-- country folk
-- techno
-- trance
-- acid
-- acid house
-- acid lounge
-- house
-- funky house
-- progressive house
-- disco
-- drum and bass
-- dubstep
-- edm
-- electro
-- experimental
-- rock
-- indie rock
-- brit rock
-- hardcore
-- heavy metal
-- metal
-- nu metal
-- blues
-- film score
-- world
-- rhumba
-- mambo
-- bollywood
-- asian
-- western
-- salsa
-- baroque
-- soul
-- chill out
-- country
-- christmas
-- ambient
-- funk
-- jazz
-- swing
-- big band
-- folk
-- classical
-- orchestral
-- ballad
-- rock and roll
-- rockabilly
-- boogie-woogie
-- 60s
-- 70s
-- deep-house
+- alternative hip-hop
+- turntablism
 
 ## Mood:
 - action
-- adventurous
 - aggressive
-- ambient
-- angelic
 - angry
 - atmospheric
-- beautiful
 - bouncy
-- bright
 - catchy
-- charm
 - excited
-- cheerful
-- childlike
 - chilled
 - cinematic
-- clapping
-- clumsy
-- cold
-- colorful
 - confident
 - cool
 - courageous
 - creepy
-- cute
 - dancing
 - danger
-- daring
 - dark
 - deep
 - depressing
 - dirty
-- downbeat
 - dramatic
 - dreamy
 - driving
@@ -122,20 +50,7 @@
 - epic
 - ethereal
 - euphoric
-- evolving
-- expansive
-- experimental
-- family
 - feel good
-- frantic
-- frightening
-- frisky
-- fun
-- funny
-- futuristic
-- gentle
-- glamorous
-- glitchy
 - good time
 - groovy
 - hard
@@ -151,14 +66,8 @@
 - inspirational
 - intense
 - intimate
-- lonely
-- lost
-- love
-- lustful
-- magical
 - meditative
 - melancholic
-- mellow
 - melodic
 - motivational
 - mysterious
@@ -168,14 +77,12 @@
 - otherworldly
 - passionate
 - peaceful
-- playful
 - poetic
 - positive
 - powerful
 - rebellious
 - relaxed
 - relentless
-- religious
 - restless
 - romantic
 - royal
@@ -185,15 +92,10 @@
 - sexy
 - smooth
 - soulful
-- summer
-- sunshine
 - suspense
-- thoughtful
 - triumphant
-- understated
 - vicious
 - vulnerable
-- youth
 - hard-hitting
 - party
 - danceable
@@ -205,14 +107,12 @@
 ## Instrument:
 - 808
 - heavy bass
-- ocarina
 - pluck
 - pizzicato
 - piano
 - keys
 - drums
 - guitar
-- claps
 - percussion
 - orchestra
 - mallet
@@ -234,7 +134,6 @@
 - choir
 - male choir
 - women choir
-- celesta
 - big drums
 - arpeggio
 - bells
@@ -245,10 +144,8 @@
 - acoustic guitar
 - bass guitar
 - electric guitar
-- fender rhodes
-- metal guitar
+- rhodes
 - muted guitar
-- spanish guitar
 - acoustic bass
 - electric bass
 - acoustic piano
@@ -264,25 +161,15 @@
 - staccato strings
 - trumpets
 - horns
-- trombone
-- tuba
-- african drums
 - timpani
 - taiko drums
 - acoustic drums
 - voices
-- woodwinds
-- clarinet
-- oboe
 - organ
-- church organ
-- ethnic instruments
-- ethnic percussion
 - pads
 - vocoder
 - samples
 - turntables
-- world instruments
 - sitar
 - sub bass
 - bass drum
@@ -300,12 +187,30 @@
 - male feature vocal
 - female feature vocal
 - instrumental
+
+## Rap Style:
+- lyrical rap
+- storytelling rap
+- battle rap
+- freestyle rap
+- melodic rap
+- emo rap
+- gangsta rap
+- cloud rap
+- street rap
+- double time rap
+- chopper rap
+- mumble rap
+- chant rap
+- fast rap
+- slow rap
   
 ## Key:
 - major
 - minor
 
 ## Vocal Fx:
+- clean
 - autotune
 - heavy-autotune
 - subtle-autotune
@@ -327,4 +232,6 @@
 - chopped
 - stutter
 - reverse
-
+- ad-libs
+- backing
+- layered backing

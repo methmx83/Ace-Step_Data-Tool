@@ -74,7 +74,9 @@ class MultiTaggerOrchestrator:
                 "genres": len(self.tag_processor.allowed_tags.genres),
                 "moods": len(self.tag_processor.allowed_tags.moods),
                 "instruments": len(self.tag_processor.allowed_tags.instruments),
-                "vocal_types": len(self.tag_processor.allowed_tags.vocal_types)
+                "vocal_types": len(self.tag_processor.allowed_tags.vocal_types),
+                "keys": len(self.tag_processor.allowed_tags.keys),
+                "vocal_fx": len(self.tag_processor.allowed_tags.vocal_fx)
             }
             self.logger.info(f"Tag processor loaded with: {stats}")
             

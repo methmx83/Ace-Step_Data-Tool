@@ -2,7 +2,7 @@
   "prompt_templates": {
     "genre": {
       "system_prompt_lines": [
-        "Analyze this audio and identify the musical genre.",
+        "Analyze this audio and identify the genre.",
         "Respond ONLY with valid JSON in this exact format:",
         "{\"genres\": [\"primary_genre\", \"secondary_genre\"]}",
         "",
@@ -19,7 +19,7 @@
       },
       "max_tokens": 55,
       "temperature": 0.2,
-      "retry_count": 2
+      "retry_count": 3
     },
     "mood": {
       "system_prompt_lines": [
@@ -47,7 +47,6 @@
         "Focus on:",
         "- Clearly audible instruments",
         "- The 4 most prominent instruments",
-        "- Use standard instrument names ",
         "- Use English names only.",
         "- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beat').",
         "Only actual instruments."
@@ -76,9 +75,59 @@
       "temperature": 0.2,
       "retry_count": 2
     }
+  ,
+    "key": {
+      "system_prompt_lines": [
+        "Detect whether the musical key is major or minor.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"key\": \"major|minor\"}",
+        "",
+        "Choose exactly one: 'major' or 'minor'. English only."
+      ],
+      "user_prompt": "Audio title: {title}\nArtist: {artist}",
+      "expected_format": {
+        "key": "string"
+      },
+      "max_tokens": 32,
+      "temperature": 0.2,
+      "retry_count": 2
+    },
+    "vocal_fx": {
+      "system_prompt_lines": [
+        "Identify 2 vocal effects.",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"vocal_fx\": [\"fx1\", \"fx2\"]}",
+        "",
+        "Return up to 2 concise items. English only."
+      ],
+      "user_prompt": "Audio title: {title}\nArtist: {artist}",
+      "expected_format": {
+        "vocal_fx": ["string", "string"]
+      },
+      "max_tokens": 40,
+      "temperature": 0.2,
+      "retry_count": 3
+    }
+    ,
+    "rap_style": {
+      "system_prompt_lines": [
+        "Identify the rap style if present (e.g., 'lyrical rap', 'trap', 'mumble rap').",
+        "Respond ONLY with valid JSON in this exact format:",
+        "{\"rap_style\": [\"style1\", \"style2\"]}",
+        "",
+        "Return up to 2 concise items. English only."
+      ],
+      "user_prompt": "Audio title: {title}\nArtist: {artist}",
+      "expected_format": {
+        "rap_style": ["string", "string"]
+      },
+      "max_tokens": 40,
+      "temperature": 0.2,
+      "retry_count": 1
+    }
   },
   "workflow_config": {
-    "default_categories": ["genre", "mood", "instruments", "vocal"],
+  "default_categories": ["genre", "key", "mood", "instruments", "vocal", "vocal_fx", "rap_style"],
     "request_delay_seconds": 0.1,
     "max_parallel_requests": 1,
   "fallback_enabled": true,
@@ -101,27 +150,33 @@
     "genre": "IMPORTANT: Respond ONLY with JSON matching exactly {\"genres\": [\"genre1\", \"genre2\"]}. Provide 2 specific genres. English only. No explanations.",
     "mood": "IMPORTANT: Return exactly 3 distinct mood items as a JSON array under key \"mood\". Use concise, single- or two-word English moods. JSON only, no explanations.",
     "instruments": "IMPORTANT: Respond ONLY with JSON matching exactly {\"instruments\": [\"inst1\", \"inst2\", \"inst3\", \"inst4\"]}. Provide 3-4 real instruments (no genres/vocals). English only. No explanations.",
-    "vocal": "IMPORTANT: Respond ONLY with JSON like {\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}. Choose exactly one. English only. No explanations.",
+  "vocal": "IMPORTANT: Respond ONLY with JSON like {\"vocal_type\": \"male vocal|female vocal|spoken word|male feature vocal|female feature vocal|instrumental\"}. Choose exactly one. English only. No explanations.",
+  "key": "IMPORTANT: Return exactly one item under key \"key\" with value 'major' or 'minor' (JSON only). No explanations.",
+  "vocal_fx": "IMPORTANT: Return up to 2 vocal effect tags under \"vocal_fx\" as a JSON array, e.g. [\"autotune\",\"harmony\"] . English only. JSON only.",
   "default": "IMPORTANT: Return at least {need} distinct {category} item(s) as per the JSON schema. JSON only, no explanations.",
   "incremental": "IMPORTANT: We already have: {existing}. Return ONLY {need} additional unique {category} item(s). Do not repeat any of the existing items. JSON only, no explanations."
   },
   "output_format": {
     "tag_separator": ", ",
-    "prefix_bpm": "bpm-",
-    "prefix_key": "key-",
     "lowercase_tags": true,
-    "min_tags_per_category": {
+      "min_tags_per_category": {
       "genre": 2,
       "mood": 3,
       "instruments": 3,
-      "vocal": 1
+      "vocal": 1,
+      "key": 1,
+        "vocal_fx": 0,
+        "rap_style": 0
     },
     "max_tags_per_category": {
       "genre": 2,
       "mood": 3,
       "instruments": 4,
-      "vocal": 1
+      "vocal": 1,
+      "key": 1,
+        "vocal_fx": 2,
+        "rap_style": 2
     },
-    "max_total_tags": 10
+    "max_total_tags": 13
   }
 }
