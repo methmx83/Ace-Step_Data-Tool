@@ -12,6 +12,9 @@ Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu e
 - Modularer Orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
 - Konfigurierbare Prompts in `config/prompts.json` (inkl. neue Templates für `key` und `vocal_fx`)
 - Sauberes Logging (Konsole + Datei)
+ - Neuerungen: spezialisiertes Hiphop-Preset & `rap_style` Kategorie
+	 - `presets/hiphop/moods.md` enthält ein spezialisiertes Set an Moods/Genres/rap-styles für Hip-Hop-Workflows.
+	 - Neue Kategorie `rap_style` (Prompt und Parser) erkennt Stile wie `trap`, `mumble rap`, `lyrical rap` und wird optional per UI/CLI aktiviert.
 
 ## Projektstruktur (Kurz)
 - `scripts/`
@@ -88,6 +91,11 @@ Ergebnis: `yourfile_prompt.txt` neben der Audio-Datei.
 ## Presets / Whitelist
 - `presets/moods.md` enthält die erlaubten Tags für `genres`, `moods`, `instruments`, `vocal types`, `keys` und `vocal_fx`.
 - Du kannst einen alternativen Pfad per Umgebungsvariable `ACE_MOODS_MD` setzen.
+ - Neu: `presets/hiphop/moods.md` ist ein Beispiel-Preset für Hip-Hop-spezifische Tags. Wähle es in der UI oder via `--moods_file presets/hiphop/moods.md` beim CLI-Run.
+
+### Rap Style aktivieren
+- In der WebUI gibt es eine Checkbox `Enable rap_style`. Wenn aktiviert, wird die Kategorie `rap_style` an das Modell angefragt und die Parser-Fallbacks greifen.
+- CLI: aktiviere durch Hinzufügen von `--moods_file presets/hiphop/moods.md` oder setze `workflow_config.default_categories` in `config/prompts.json` so, dass `rap_style` enthalten ist.
 
 ## Tests & Smoke-Checks
 - Empfohlen: kurze Unit-Tests für `JSONParser` (z. B. `key` / `vocal_fx` Fallbacks) und `TagProcessor` (Whitelist/Alias/Fuzzy).
