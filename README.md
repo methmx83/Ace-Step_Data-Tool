@@ -29,6 +29,30 @@ Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu e
 	- `helpers/tag_processor.py` — Normalisierung, Alias-Map, Conflict-Resolution (inkl. `keys` + `vocal_fx`)
 	- `helpers/context_extractor.py` — Kontext aus Dateinamen
 	- `helpers/logger_setup.py` — Session-Logging
+
+	## Neu
+
+	- BPM-Erkennung: Es gibt jetzt ein dediziertes Skript zur BPM-Analyse unter `scripts/helpers/bpm.py`.
+		- Funktion: `detect_tempo(audio_path: str) -> Optional[float]` erkennt das Tempo und gibt bei Erfolg eine Zahl zurück.
+		- Integration: Die Pipeline ruft die Erkennung vor der Prompt-/Tag-Erzeugung auf und fügt ein normalisiertes Tag im Format `bpm-XXX` in die generierten `_prompt.txt` Dateien ein.
+
+	- Neues WebUI: `scripts/ui/ui.py` (Gradio) ist das aktuelle Interface.
+		- Start: `python -m scripts.ui.ui` startet die WebUI.
+		- Die UI startet intern `multi_tagger` als Subprozess (mit `--suppress_header`), zeigt Live-Logs und bietet einen Prompt-Editor zum Nachbearbeiten der `_prompt.txt` Dateien.
+
+	Hinweis: Wenn du die Logs beim direkten CLI-Start weniger ausführlich haben willst, nutze `--suppress_header` für `multi_tagger`.
+
+	## Beispiel: Inhalt einer _prompt.txt
+
+	Wenn die Pipeline eine Audiodatei verarbeitet, wird neben der Datei eine `_prompt.txt` erzeugt. Sie enthält eine einfache, kommagetrennte Liste von Tags. Beispiel:
+
+	pop, bpm-114, electronic, minor, sad, piano, synth-pad, female-vocal
+
+	Hinweise:
+	- Das BPM-Tag hat das Format `bpm-<INT>` (z. B. `bpm-114`).
+	- Tags sind lowercase und idealerweise hyphen-separated (`synth-pad`, `female-vocal`).
+	- Die Pipeline fügt das BPM-Tag automatisch hinzu (wenn erkannt) und entfernt doppelte `bpm-*` Einträge.
+	- Wenn du die Reihenfolge in der Datei manuell anpassen willst, kannst du den Prompt-Editor in der WebUI verwenden.
 - `config/` — Prompt- & Modell-Configs (`config/prompts.json` enthält neue Kategorien)
 - `presets/` — `moods.md` mit Whitelist-Tags (Genres, Moods, Instruments, Vocal Types, Keys, Vocal Fx)
 - `data/` — `audio/`, `cache/`, `output/` (Audio und generierte `_prompt.txt`)

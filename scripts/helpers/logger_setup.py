@@ -21,6 +21,8 @@ import re
 # Globale Session-Infos für Zusatz-Logs (z. B. RAW Responses)
 _CURRENT_SESSION_NAME: Optional[str] = None
 _RAW_BASE_DIR = Path("logs") / "raw"
+# Wenn True, unterdrücke ausführliche Header-Logs (System-Info, Config Dumps, SessionStart)
+_SUPPRESS_HEADER: bool = False
 
 class DualLogger:
     """
@@ -102,11 +104,13 @@ class DualLogger:
             tmp_logger.debug(f"Could not prepare RAW directory: {e}")
 
         # Session-Info loggen
-        logger = logging.getLogger("LoggerSetup")
-        logger.info(f"Logging session started: {session_name}")
-        logger.info(f"Log file: {log_file}")
-        logger.info(f"Console level: {logging.getLevelName(console_level)}")
-        logger.info(f"File level: {logging.getLevelName(file_level)}")
+        # Nur loggen wenn Header nicht unterdrückt wird
+        if not _SUPPRESS_HEADER:
+            logger = logging.getLogger("LoggerSetup")
+            logger.info(f"Logging session started: {session_name}")
+            logger.info(f"Log file: {log_file}")
+            logger.info(f"Console level: {logging.getLevelName(console_level)}")
+            logger.info(f"File level: {logging.getLevelName(file_level)}")
         
         return root_logger
     
@@ -116,26 +120,32 @@ class DualLogger:
         import platform
         import torch
         
+        # Respektiere globale Suppress-Einstellung
+        if _SUPPRESS_HEADER:
+            return
+
         logger = logging.getLogger("SystemInfo")
-        
+
         logger.info("=== SYSTEM INFORMATION ===")
         logger.info(f"Platform: {platform.platform()}")
         logger.info(f"Python: {platform.python_version()}")
         logger.info(f"PyTorch: {torch.__version__}")
         logger.info(f"CUDA Available: {torch.cuda.is_available()}")
-        
+
         if torch.cuda.is_available():
             logger.info(f"CUDA Version: {torch.version.cuda}")
             logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
             logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB")
-        
+
         logger.info("=" * 30)
     
     @staticmethod
     def log_config_info(config_data: dict, config_name: str = "Config"):
         """Loggt Konfigurationsdaten strukturiert"""
         import json
-        
+        if _SUPPRESS_HEADER:
+            return
+
         logger = logging.getLogger("ConfigInfo")
         logger.info(f"=== {config_name.upper()} ===")
         logger.info(json.dumps(config_data, indent=2, ensure_ascii=False))
@@ -144,11 +154,14 @@ class DualLogger:
     @staticmethod
     def log_processing_session_start(audio_files: list):
         """Loggt Session-Start mit Datei-Informationen"""
+        if _SUPPRESS_HEADER:
+            return
+
         logger = logging.getLogger("SessionStart")
-        
+
         logger.info("=== PROCESSING SESSION START ===")
         logger.info(f"Total files to process: {len(audio_files)}")
-        
+
         for i, file_path in enumerate(audio_files, 1):
             from pathlib import Path
             file_info = Path(file_path)
@@ -157,7 +170,7 @@ class DualLogger:
                 logger.info(f"  {i:2d}. {file_info.name} ({size_mb:.1f}MB)")
             except:
                 logger.info(f"  {i:2d}. {file_info.name} (size unknown)")
-        
+
         logger.info("=" * 40)
     
     @staticmethod
@@ -190,7 +203,7 @@ class DualLogger:
         logger.info("=" * 40)
 
 
-def setup_session_logging(session_name: Optional[str] = None, verbose: bool = False) -> str:
+def setup_session_logging(session_name: Optional[str] = None, verbose: bool = False, suppress_header: bool = False) -> str:
     """
     Convenience-Funktion für Session-Setup
     
@@ -205,13 +218,25 @@ def setup_session_logging(session_name: Optional[str] = None, verbose: bool = Fa
     generated_session = session_name or f"tagging_session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     # Logger Setup
+    # Setze globale Suppress-Einstellung falls über Aufruf oder ENV gewünscht
+    try:
+        global _SUPPRESS_HEADER
+        # Priorisiere übergebenes Argument, sonst ENV-Fallback
+        if suppress_header:
+            _SUPPRESS_HEADER = True
+        else:
+            env_flag = os.environ.get("LOG_SUPPRESS_HEADER", "").lower() in ("1", "true", "yes")
+            _SUPPRESS_HEADER = env_flag or False
+    except Exception:
+        _SUPPRESS_HEADER = bool(suppress_header)
+
     DualLogger.setup_logging(
         console_level=console_level,
         file_level=file_level,
         session_name=generated_session
     )
-    
-    # System-Info loggen
+
+    # System-Info loggen (optional, abhängig von _SUPPRESS_HEADER)
     DualLogger.log_system_info()
     
     # Return Log-File Path (identisch zum in setup_logging verwendeten Namen)

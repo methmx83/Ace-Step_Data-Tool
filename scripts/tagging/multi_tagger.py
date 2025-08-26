@@ -368,6 +368,8 @@ Examples:
                        help="Verbose Logging (DEBUG level)")
     parser.add_argument("--session_name", type=str,
                        help="Name für diese Session (für Log-Datei)")
+    parser.add_argument("--suppress_header", action="store_true",
+                       help="Unterdrücke ausführliche Header-Logs (System-Info, Config Dumps)")
     parser.add_argument("--allow_tag_extras", action="store_true",
                        help="Erlaube Tags außerhalb der Whitelist (Standard: aus)")
     
@@ -376,7 +378,8 @@ Examples:
     # Logging Setup
     log_file = setup_session_logging(
         session_name=args.session_name,
-        verbose=args.verbose
+        verbose=args.verbose,
+        suppress_header=bool(args.suppress_header)
     )
     
     main_logger = get_session_logger("Main")
@@ -441,11 +444,55 @@ Examples:
         try:
             # Kontext aus Filename extrahieren
             context = extract_from_filename(str(audio_file))
-            
+
+            # BPM-Erkennung: Falls im Dateinamen kein BPM gefunden wurde,
+            # versuchen wir, ihn aus der Audiodatei zu ermitteln. Lazy import
+            # von detect_tempo, damit schwere Dependencies nicht beim Modulimport
+            # geladen werden müssen.
+            try:
+                if not context.get("bpm") or str(context.get("bpm")).lower() in ("unknown", ""):
+                    try:
+                        from scripts.helpers.bpm import detect_tempo
+
+                        detected_bpm = detect_tempo(str(audio_file))
+                        if detected_bpm:
+                            context["bpm"] = str(int(detected_bpm))
+                            main_logger.info(f"Detected BPM {context['bpm']} for {audio_file.name}")
+                        else:
+                            main_logger.debug(f"No BPM detected for {audio_file.name}")
+                    except Exception as e:
+                        # Logge, aber fahre fort — BPM-Erkennung ist optional
+                        main_logger.debug(f"BPM detection skipped/error for {audio_file.name}: {e}")
+                else:
+                    main_logger.debug(f"BPM already present in filename: {context.get('bpm')} for {audio_file.name}")
+            except Exception as e:
+                main_logger.debug(f"Unexpected error during BPM detection for {audio_file.name}: {e}")
+
             # Audio verarbeiten
             tags = orchestrator.process_audio_file(str(audio_file), context)
             
             if tags:
+                # Sicherstellen, dass ein erkannter BPM-Tag in den finalen Tags
+                try:
+                    bpm_val = context.get("bpm") if isinstance(context, dict) else None
+                    if bpm_val and str(bpm_val).lower() not in ("unknown", ""):
+                        try:
+                            # Normalisiere auf ganze Zahl
+                            bpm_int = int(float(str(bpm_val)))
+                            bpm_tag = f"bpm-{bpm_int}"
+
+                            # Entferne alte bpm- Tags (falls vorhanden) und füge das neue ein
+                            import re as _re
+                            tags = [t for t in tags if not _re.match(r"^bpm-\d+", str(t).strip().lower())]
+                            # Platziere das bpm-tag bevorzugt nach dem ersten Tag, sonst ans Ende
+                            insert_pos = 1 if len(tags) > 0 else len(tags)
+                            tags.insert(insert_pos, bpm_tag)
+                            main_logger.info(f"Inserted BPM tag '{bpm_tag}' into tags for {audio_file.name}")
+                        except Exception as _e:
+                            main_logger.debug(f"Failed to normalise/insert BPM tag for {audio_file.name}: {_e}")
+                except Exception as e:
+                    main_logger.debug(f"Error when handling BPM tag for {audio_file.name}: {e}")
+
                 # Tags-Datei schreiben
                 tags_file = orchestrator.write_tags_file(str(audio_file), tags)
                 if tags_file:
