@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
 import gradio as gr  # 5.x
 
 # Projekt-Helfer
+from scripts.ui import lyrics_ui as lyr  # reuse der Lyrics-Callbacks & Utils
 from scripts.helpers.preset_loader import list_presets, resolve_preset_path
 from scripts.helpers.logger_setup import get_session_logger
 
@@ -38,7 +39,7 @@ INSTRUCTIONS_DEFAULT = (
     "3) Click on 'start tagging'.\n" 
     "- You can see the progress, current file, and logs live on the left.\n"
 )
-
+AUDIO_DIR = ROOT / "data" / "audio"
 FILE_LINE_RE = re.compile(r"FILE\s+(\d+)\s*/\s*(\d+)\s*:\s*(.+)")
 
 # --- Laufsteuerung für Start/Stop ---
@@ -230,97 +231,135 @@ def _save_prompt_text(rel_label: str, content: str, abs_paths: List[str]) -> str
 def launch_ui():
     presets = list_presets() or ["default"]
     default_preset = presets[0]
-
     with gr.Blocks(css=CSS, title="ACE-DATA_v2 — Tagging") as demo:
-        # Kopfzeile
-        with gr.Row():
-            preset_dd = gr.Dropdown(choices=presets, value=default_preset, label="Genre-Preset", interactive=True)
-            rap_toggle = gr.Checkbox(value=False, label="Rap Style", interactive=True, visible=False)  # optional ausblenden
+        with gr.Tabs():
+            # --- Tagging Tab ---
+            with gr.TabItem("Tagging"):
+                # Kopfzeile
+                with gr.Row():
+                    preset_dd = gr.Dropdown(choices=presets, value=default_preset, label="Genre-Preset", interactive=True)
+                    rap_toggle = gr.Checkbox(value=False, label="Rap Style", interactive=True, visible=False)  # optional ausblenden
 
-        # Breite Progressbar + Status
-        progress_html = gr.HTML(_build_progress_html(0.0))
-        status_md = gr.Markdown("**Status:** Ready.")
+                # Breite Progressbar + Status
+                progress_html = gr.HTML(_build_progress_html(0.0))
+                status_md = gr.Markdown("**Status:** Ready.")
 
-        # Untere zwei Boxen (links breiter, rechts schmaler)
-        with gr.Row():
-            with gr.Column(scale=2):
-                current_file_md = gr.Markdown("**Current file:** –")
-                log_text = gr.Textbox(label="Live Log", value="", lines=18, interactive=False)
-            with gr.Column(scale=1):
-                gr.Markdown("<br>")
-                gr.Markdown('<div class="box-title"></div>')
-                info_text = gr.Textbox(label="Information", value=INSTRUCTIONS_DEFAULT, lines=11, interactive=True)
+                # Untere zwei Boxen (links breiter, rechts schmaler)
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        current_file_md = gr.Markdown("**Current file:** –")
+                        log_text = gr.Textbox(label="Live Log", value="", lines=18, interactive=False)
+                    with gr.Column(scale=1):
+                        gr.Markdown("<br>")
+                        gr.Markdown('<div class="box-title"></div>')
+                        info_text = gr.Textbox(label="Information", value=INSTRUCTIONS_DEFAULT, lines=11, interactive=True)
 
-                # Buttons unter der rechten Text-Box (vertikal)
-                with gr.Column():
-                    start_btn = gr.Button(value="Start Tagging", variant="secondary")
-                    stop_btn  = gr.Button(value="Stop", variant="stop")
+                        # Buttons unter der rechten Text-Box (vertikal)
+                        with gr.Column():
+                            start_btn = gr.Button(value="Start Tagging", variant="secondary")
+                            stop_btn  = gr.Button(value="Stop", variant="stop")
 
-        # ---- Start/Stop Logik ----
+                # ---- Start/Stop Logik ----
 
-        def on_start(preset_key: str) -> Iterator[tuple]:
-            # rap_toggle ist logische Deko; Preset steuert Kategorien
-            input_dir = "data/audio"
-            yield from _run_cli_stream(preset_key, input_dir)
+                def on_start(preset_key: str) -> Iterator[tuple]:
+                    # rap_toggle ist logische Deko; Preset steuert Kategorien
+                    input_dir = "data/audio"
+                    yield from _run_cli_stream(preset_key, input_dir)
 
-        def on_stop() -> str:
-            global STOP_REQUESTED, RUN_PROC
-            if RUN_PROC is None or RUN_PROC.poll() is not None:
-                return "**Status:** No active run."
-            STOP_REQUESTED = True
-            try:
-                _terminate_process(RUN_PROC)
-            except Exception as e:
-                LOGGER.warning(f"Stop error: {e}")
-            return "**Status:** ⏹️ Cancellation requested …"
+                def on_stop() -> str:
+                    global STOP_REQUESTED, RUN_PROC
+                    if RUN_PROC is None or RUN_PROC.poll() is not None:
+                        return "**Status:** No active run."
+                    STOP_REQUESTED = True
+                    try:
+                        _terminate_process(RUN_PROC)
+                    except Exception as e:
+                        LOGGER.warning(f"Stop error: {e}")
+                    return "**Status:** ⏹️ Cancellation requested …"
 
-        run_event = start_btn.click(
-            fn=on_start,
-            inputs=[preset_dd],
-            outputs=[progress_html, status_md, log_text, current_file_md],
-            show_progress=False,
-        )
-        stop_btn.click(
-            fn=on_stop,
-            inputs=[],
-            outputs=[status_md],
-            show_progress=False,
-        )
+                run_event = start_btn.click(
+                    fn=on_start,
+                    inputs=[preset_dd],
+                    outputs=[progress_html, status_md, log_text, current_file_md],
+                    show_progress=False,
+                )
+                stop_btn.click(
+                    fn=on_stop,
+                    inputs=[],
+                    outputs=[status_md],
+                    show_progress=False,
+                )
 
-        # --- Prompt-Editor (unterhalb der Buttons / dem zweispaltigen Bereich) ---
-        gr.Markdown("### 📝 Prompt-Editor (post-processing)")
-        with gr.Row():
-            prompt_files_state = gr.State([])
-            prompt_file_dd = gr.Dropdown(label="Prompt-file", choices=[], value=None, interactive=True, scale=2)
-            reload_btn = gr.Button("↻ Reload list", variant="secondary", scale=1)
+                # --- Prompt-Editor (post-processing) in Tagging tab ---
+                gr.Markdown("### 📝 Prompt-Editor (post-processing)")
+                with gr.Row():
+                    prompt_files_state = gr.State([])
+                    prompt_file_dd = gr.Dropdown(label="Prompt-file", choices=[], value=None, interactive=True, scale=2)
+                    reload_btn = gr.Button("↻ Reload list", variant="secondary", scale=1)
 
-        prompt_text = gr.Textbox(label="Tags in this file", value="", lines=2, interactive=True)
-        with gr.Row():
-            save_btn = gr.Button("💾 Save", variant="secondary")
-            status_out = gr.Markdown("")
+                prompt_text = gr.Textbox(label="Tags in this file", value="", lines=2, interactive=True)
+                with gr.Row():
+                    save_btn = gr.Button("💾 Save", variant="secondary")
+                    status_out = gr.Markdown("")
 
-        def ui_scan() -> tuple:
-            labels, abs_paths = _scan_prompt_files()
-            value = labels[0] if labels else None
-            return gr.update(choices=labels, value=value), abs_paths, "", ""
+                def ui_scan() -> tuple:
+                    labels, abs_paths = _scan_prompt_files()
+                    value = labels[0] if labels else None
+                    return gr.update(choices=labels, value=value), abs_paths, "", ""
 
-        def ui_load(selected_label: str, abs_paths: List[str]) -> tuple:
-            if not selected_label:
-                return "", "⚠️ No file selected."
-            text, msg = _load_prompt_text(selected_label, abs_paths)
-            return text, msg
+                def ui_load(selected_label: str, abs_paths: List[str]) -> tuple:
+                    if not selected_label:
+                        return "", "⚠️ No file selected."
+                    text, msg = _load_prompt_text(selected_label, abs_paths)
+                    return text, msg
 
-        def ui_save(selected_label: str, text: str, abs_paths: List[str]) -> str:
-            if not selected_label:
-                return "⚠️ No file selected."
-            return _save_prompt_text(selected_label, text, abs_paths)
+                def ui_save(selected_label: str, text: str, abs_paths: List[str]) -> str:
+                    if not selected_label:
+                        return "⚠️ No file selected."
+                    return _save_prompt_text(selected_label, text, abs_paths)
 
-        reload_btn.click(fn=ui_scan, inputs=[], outputs=[prompt_file_dd, prompt_files_state, prompt_text, status_out])
-        prompt_file_dd.change(fn=ui_load, inputs=[prompt_file_dd, prompt_files_state], outputs=[prompt_text, status_out])
-        save_btn.click(fn=ui_save, inputs=[prompt_file_dd, prompt_text, prompt_files_state], outputs=[status_out])
+                reload_btn.click(fn=ui_scan, inputs=[], outputs=[prompt_file_dd, prompt_files_state, prompt_text, status_out])
+                prompt_file_dd.change(fn=ui_load, inputs=[prompt_file_dd, prompt_files_state], outputs=[prompt_text, status_out])
+                save_btn.click(fn=ui_save, inputs=[prompt_file_dd, prompt_text, prompt_files_state], outputs=[status_out])
 
-        # Nach dem Lauf automatisch die Liste der Prompt-Dateien aktualisieren
-        run_event.then(fn=ui_scan, inputs=[], outputs=[prompt_file_dd, prompt_files_state, prompt_text, status_out])
+                # Nach dem Lauf automatisch die Liste der Prompt-Dateien aktualisieren
+                run_event.then(fn=ui_scan, inputs=[], outputs=[prompt_file_dd, prompt_files_state, prompt_text, status_out])
+
+            # --- Lyrics Tab ---
+            with gr.TabItem("Lyrics"):
+                gr.Markdown("### 🎶 Lyrics Scraper — fetch, clean & edit")
+                l_progress_html = gr.HTML(lyr.build_progress_html(0.0))
+                l_status_md = gr.Markdown("**Status:** Ready.")
+                l_log_state = gr.State("")
+                with gr.Row():
+                    l_log_box = gr.Textbox(label="Live Log", value="", lines=18, interactive=False, show_copy_button=True)
+                    with gr.Column():
+                        l_file_dropdown = gr.Dropdown(label="Lyrics files", choices=lyr.find_lyrics_display_names(), value=None, interactive=True)
+                        l_editor_box = gr.Textbox(label="Lyrics Editor", value="", lines=18, interactive=True)
+                        l_save_button = gr.Button("Save Lyrics")
+                l_overwrite_checkbox = gr.Checkbox(label="Overwrite lyrics", value=False)
+                l_fetch_button = gr.Button("Get Lyrics", variant="primary")
+
+                l_fetch_button.click(
+                    fn=lyr.process_all_files,
+                    inputs=[l_overwrite_checkbox],
+                    outputs=[l_progress_html, l_status_md, l_log_box, l_file_dropdown, l_log_state],
+                    queue=True,
+                    show_progress=False,
+                )
+                l_file_dropdown.change(
+                    fn=lyr.load_lyrics_file,
+                    inputs=[l_file_dropdown],
+                    outputs=[l_editor_box],
+                    show_progress=False,
+                )
+                l_save_button.click(
+                    fn=lyr.save_lyrics_file,
+                    inputs=[l_file_dropdown, l_editor_box, l_log_state],
+                    outputs=[l_log_box, l_log_state],
+                    show_progress=False,
+                )        
+                # Prompt-Editor removed from Lyrics tab (moved to Tagging tab)
 
     demo.launch()
 

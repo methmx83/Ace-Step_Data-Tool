@@ -42,6 +42,41 @@ Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu e
 
 	Hinweis: Wenn du die Logs beim direkten CLI-Start weniger ausführlich haben willst, nutze `--suppress_header` für `multi_tagger`.
 
+## Lyrics Scraper (neu)
+
+Kurz: Das Projekt enthält jetzt einen eigenständigen Lyric‑Scraper, der Lyrics aus dem Web (z. B. Genius.com) holt, die Dateien bereinigt und über die WebUI editierbar macht. Die relevanten Module liegen unter `scripts/helpers/`.
+
+Wichtige Module
+- `scripts/helpers/lyrics.py` — Kernlogik zum Ermitteln von Artist/Title, Konstruktion von Genius‑URLs, Fallback‑Suche und Schreiben von `<audio-basename>_lyrics.txt`.
+- `scripts/helpers/clean_lyrics.py` — Post‑Processing: entfernt Kopfzeilen/Metadaten und schreibt bereinigte Lyrics (z. B. alles vor erstem `[Verse]`-Marker entfernen).
+- `scripts/helpers/metadata.py` — String‑Normalisierung für Dateinamen/URLs (z. B. `normalize_string`, `clean_filename`, `clean_rap_metadata`).
+- `scripts/helpers/shared_logs.py` — Zentraler Log‑Puffer (`LOGS`) und `log_message()` für konsistente UI‑Anzeige.
+
+Verwendung
+- WebUI (empfohlen für interaktives Arbeiten):
+	```bat
+	cd scripts\ui
+	python ui.py
+	```
+	Im Browser Tab "Lyrics" findest du: `Get Lyrics` (läuft Scraper + speichert), `Overwrite lyrics` (steuert Überschreiben), Live‑Log und `Save Lyrics` (speichert manuell editierten Text).
+
+- Programmgesteuert / CLI: Es gibt helper‑Funktionen in `scripts/helpers/lyrics.py` — z. B. `process_single_file(path)` oder `get_lyrics(artist, title)` für Scripting in eigenen Tools oder Tests.
+
+Ausgabe
+- `<audio-basename>_lyrics.txt` — die rohe bzw. bereinigte Lyrics‑Datei (UTF‑8).
+- Optional werden Begleitdateien wie `_prompt.txt` oder Backup‑Dateien (`.bak`) erzeugt, abhängig von Pipeline‑Schritten.
+
+Wichtig für Entwickler
+- Logging: Verwende `shared_logs.log_message()` anstelle von `print()` in allen Lyrics‑Modulen, damit die WebUI die Logs konsistent anzeigen kann.
+- HTTP/Robustheit: Beim Scrapen empfiehlt sich eine Retry/Backoff‑Logik bei 429/5xx Antworten und ein moderates `REQUEST_DELAY` (z. B. 1.0–2.0s), um IP‑Sperren zu vermeiden.
+- Tests: Erstelle Unit‑Tests für `normalize_string`, `clean_rap_metadata` und `bereinige_datei` (temporäre Dateien als Fixtures). Für `scrape_genius_lyrics` nutze lokale HTML‑Fixtures statt Live‑Requests in CI.
+
+Rechtliches / Hinweise
+- Web‑Scraping von Seiten wie Genius kann Einschränkungen durch deren AGB unterliegen. Bitte prüfe die rechtliche Lage bevor du automatisierte Scrapes in großem Maßstab fährst.
+
+Weiteres
+- Empfehlung: Kleine Code‑Änderung — ersetze verbleibende `print()`‑Aufrufe in `scripts/helpers/lyrics.py` durch `shared_logs.log_message()`; das verbessert die UI‑Integration.
+
 	## Beispiel: Inhalt einer _prompt.txt
 
 	Wenn die Pipeline eine Audiodatei verarbeitet, wird neben der Datei eine `_prompt.txt` erzeugt. Sie enthält eine einfache, kommagetrennte Liste von Tags. Beispiel:
