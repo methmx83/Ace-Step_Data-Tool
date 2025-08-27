@@ -45,17 +45,16 @@ class MultiTaggerOrchestrator:
                  prompts_config_path: str = "config/prompts.json",
                  moods_file_path: str = "presets/moods.md",
                  allow_tag_extras: bool = False):
-        
         self.logger = get_session_logger("Orchestrator")
         self.logger.info("Initializing MultiTaggerOrchestrator...")
-        
+
         # Load configurations
         self.prompts_config = self._load_json_config(prompts_config_path)
         self.logger.info(f"Loaded prompts config with {len(self.prompts_config.get('prompt_templates', {}))} templates")
-        
+
         # Log loaded config
         DualLogger.log_config_info(self.prompts_config, "Prompts Config")
-        
+
         # Initialize components
         try:
             # Audio einmal in 16kHz WAV cachen und für alle Kategorien verwenden
@@ -64,11 +63,11 @@ class MultiTaggerOrchestrator:
         except Exception as e:
             log_exception(self.logger, "audio processor initialization", e)
             raise
-        
+
         try:
             self.tag_processor = create_tag_processor(moods_file_path, allow_extras=allow_tag_extras)
             self.logger.info("Tag processor initialized")
-            
+
             # Log tag statistics
             stats = {
                 "genres": len(self.tag_processor.allowed_tags.genres),
@@ -79,7 +78,7 @@ class MultiTaggerOrchestrator:
                 "vocal_fx": len(self.tag_processor.allowed_tags.vocal_fx)
             }
             self.logger.info(f"Tag processor loaded with: {stats}")
-            
+
         except FileNotFoundError as e:
             # Klare Meldung, wenn presets/moods.md fehlt
             self.logger.error(str(e))
@@ -87,11 +86,16 @@ class MultiTaggerOrchestrator:
         except Exception as e:
             log_exception(self.logger, "tag processor initialization", e)
             raise
-        
+
         # Model wird lazy geladen beim ersten Bedarf
-        self.model_wrapper: Optional[Qwen2AudioWrapper] = None
+        self.model_wrapper = None
         self.model_config_path = model_config_path
-        
+
+        # Keep track of last used audio cache paths for optional cleanup
+        self._last_used_audio_paths = []
+        # Keep track of processed source files for session-level fallback cleanup
+        self._session_source_files = []
+
         self.logger.info("MultiTaggerOrchestrator initialized successfully")
 
     
@@ -246,6 +250,10 @@ class MultiTaggerOrchestrator:
             by_cat_needed = seg_planner.plan_all(categories)
             seg_path_by_name = seg_planner.prepare_cache(audio_path, categories)
             used_audio_paths = list(seg_path_by_name.values())
+            # Save for optional external cleanup (collect union across session)
+            self._last_used_audio_paths.extend(used_audio_paths)
+            # dedupe while preserving order
+            self._last_used_audio_paths = list(dict.fromkeys(self._last_used_audio_paths))
             if not used_audio_paths:
                 # Fallback: single default processing
                 single = self.audio_processor.process_audio_file(audio_path)
@@ -253,12 +261,29 @@ class MultiTaggerOrchestrator:
                     used_audio_paths = [str(Path(single.cache_path).resolve())]
                 else:
                     used_audio_paths = [audio_path]
+                # ensure last_used contains these paths
+                self._last_used_audio_paths.extend(used_audio_paths)
+                self._last_used_audio_paths = list(dict.fromkeys(self._last_used_audio_paths))
             file_logger.info(f"Using {len(used_audio_paths)} audio file(s) for inference (union prepared)")
+            # record source file for session-level cache lookup
+            try:
+                self._session_source_files.append(audio_path)
+                # dedupe
+                self._session_source_files = list(dict.fromkeys(self._session_source_files))
+            except Exception:
+                pass
         except Exception as e:
             log_exception(file_logger, "audio preprocessing", e)
             file_logger.warning("Falling back to original audio path")
             by_cat_needed = {}
             used_audio_paths = [audio_path]
+            self._last_used_audio_paths.extend(used_audio_paths)
+            self._last_used_audio_paths = list(dict.fromkeys(self._last_used_audio_paths))
+            try:
+                self._session_source_files.append(audio_path)
+                self._session_source_files = list(dict.fromkeys(self._session_source_files))
+            except Exception:
+                pass
 
         # Helper, um pro Kategorie die richtigen Pfade zu bekommen
         def cat_audio_paths(cat: str) -> List[str]:
@@ -372,6 +397,8 @@ Examples:
                        help="Unterdrücke ausführliche Header-Logs (System-Info, Config Dumps)")
     parser.add_argument("--allow_tag_extras", action="store_true",
                        help="Erlaube Tags außerhalb der Whitelist (Standard: aus)")
+    parser.add_argument("--cleanup-cache", action="store_true",
+                       help="Löscht temporäre konvertierte Cache-Dateien (data/cache) nach erfolgreicher Verarbeitung jeder Datei")
     
     args = parser.parse_args()
     
@@ -501,6 +528,7 @@ Examples:
                 else:
                     DualLogger.log_file_processing_result(str(audio_file), [], False, "Failed to write tags file")
                     failed += 1
+                # per-file cleanup disabled: using session-level cleanup
             else:
                 DualLogger.log_file_processing_result(str(audio_file), [], False, "No tags generated")
                 failed += 1
@@ -520,7 +548,53 @@ Examples:
     main_logger.info(f"❌ Failed: {failed}")
     main_logger.info(f"📁 Log file: {log_file}")
     main_logger.info("=== SESSION END ===")
+    # Optional: Session-level cache cleanup
+    try:
+        if args.cleanup_cache:
+            cache_dir = Path(orchestrator.audio_processor.cache_dir).resolve()
+            to_delete = []
+            for p in orchestrator._last_used_audio_paths:
+                try:
+                    rp = Path(p).resolve()
+                    # Nur Dateien die im Cache-Ordner liegen
+                    rp.relative_to(cache_dir)
+                    if rp.exists() and rp.is_file():
+                        to_delete.append(str(rp))
+                except Exception:
+                    continue
+
+            if to_delete:
+                main_logger.info(f"Performing session cache cleanup: {len(to_delete)} file(s)")
+                res = orchestrator.audio_processor.remove_cached_paths(to_delete)
+                main_logger.info(f"Cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
+            else:
+                # Fallback: try to find cache entries by source_path in audio_processor.cache_info
+                try:
+                    session_sources = list(getattr(orchestrator, '_session_source_files', []) or [])
+                    fallback_files = []
+                    if session_sources:
+                        for k, entry in orchestrator.audio_processor.cache_info.get('cache_entries', {}).items():
+                            src = entry.get('source_path')
+                            try:
+                                if src and any(str(s) in str(src) or str(src) in str(s) for s in session_sources):
+                                    p = Path(orchestrator.audio_processor.cache_dir) / entry.get('filename')
+                                    if p.exists():
+                                        fallback_files.append(str(p.resolve()))
+                            except Exception:
+                                continue
+
+                    if fallback_files:
+                        main_logger.info(f"Found {len(fallback_files)} fallback cache file(s) by source_path; deleting them")
+                        res = orchestrator.audio_processor.remove_cached_paths(fallback_files)
+                        main_logger.info(f"Fallback cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
+                    else:
+                        main_logger.info("No cache files found to delete for this session (even by fallback scan)")
+                except Exception as e:
+                    main_logger.error(f"Fallback cache scan failed: {e}")
+    except Exception as e:
+        main_logger.error(f"Session cache cleanup failed: {e}")
 
 
 if __name__ == "__main__":
     main()
+

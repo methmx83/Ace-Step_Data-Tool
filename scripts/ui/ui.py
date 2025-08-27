@@ -104,6 +104,7 @@ def _run_cli_stream(preset_key: str, input_dir: str) -> Iterator[tuple]:
         "--input_dir", input_dir, "--verbose",
     "--suppress_header",
     "--moods_file", preset_path,
+        "--cleanup-cache",
     ]
     LOGGER.info(f"Launching CLI: {' '.join(cmd)} (cwd={ROOT})")
 
@@ -258,6 +259,7 @@ def launch_ui():
                         with gr.Column():
                             start_btn = gr.Button(value="Start Tagging", variant="secondary")
                             stop_btn  = gr.Button(value="Stop", variant="stop")
+                            clear_logs_btn = gr.Button(value="Clear Logs", variant="danger")
 
                 # ---- Start/Stop Logik ----
 
@@ -285,6 +287,37 @@ def launch_ui():
                 )
                 stop_btn.click(
                     fn=on_stop,
+                    inputs=[],
+                    outputs=[status_md],
+                    show_progress=False,
+                )
+
+                def on_clear_logs() -> str:
+                    """Löscht rekursiv alle .log Dateien im Projekt-Logs-Ordner und gibt einen Status zurück."""
+                    try:
+                        logs_dir = Path(ROOT) / "logs"
+                        if not logs_dir.exists():
+                            return "**Status:** Kein 'logs' Ordner gefunden."
+                        removed = 0
+                        errors = []
+                        for pattern in ("*.log", "*.txt"):
+                            for p in logs_dir.rglob(pattern):
+                                try:
+                                    p.unlink()
+                                    removed += 1
+                                except Exception as e:
+                                    errors.append(f"{p}: {e}")
+                        msg = f"**Status:** Gelöscht: {removed} .log Dateien."
+                        if errors:
+                            LOGGER.warning(f"Log cleanup errors: {errors[:5]}")
+                            msg += f" Fehler beim Löschen: {len(errors)} Dateien (siehe Server-Logs)."
+                        return msg
+                    except Exception as e:
+                        LOGGER.exception("Error clearing logs")
+                        return f"**Status:** Fehler beim Löschen der Logs: {e}"
+
+                clear_logs_btn.click(
+                    fn=on_clear_logs,
                     inputs=[],
                     outputs=[status_md],
                     show_progress=False,

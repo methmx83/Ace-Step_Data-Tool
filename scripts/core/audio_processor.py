@@ -667,6 +667,80 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Cache clearing failed: {e}")
 
+    def remove_cached_paths(self, paths: List[str]) -> Dict[str, Any]:
+        """
+        Entfernt einzelne Dateien aus dem Cache und aktualisiert die Cache-Metadaten.
+
+        Args:
+            paths: Liste von Pfaden (absolut oder relativ). Nur Dateien unter dem
+                   konfigurierten cache_dir werden gelöscht — Quell-Audio wird nicht entfernt.
+
+        Returns:
+            Dict mit Angaben zu gelöschten/ignorierten Dateien.
+        """
+        results = {
+            "deleted": [],
+            "skipped_not_in_cache": [],
+            "errors": []
+        }
+
+        try:
+            base = self.cache_dir.resolve()
+            for p in paths:
+                try:
+                    pth = Path(p).resolve()
+                except Exception:
+                    results["errors"].append({"path": p, "error": "resolve_failed"})
+                    continue
+
+                # Nur löschen, wenn die Datei im Cache-Ordner liegt
+                try:
+                    pth.relative_to(base)
+                except Exception:
+                    results["skipped_not_in_cache"].append(str(pth))
+                    continue
+
+                if not pth.exists():
+                    results["skipped_not_in_cache"].append(str(pth))
+                    continue
+
+                # Versuche, die Datei zu löschen und Cache-Metadaten zu updaten
+                try:
+                    fname = pth.name
+                    # Suche zugehörigen Cache-Entry
+                    matching_keys = [k for k, v in list(self.cache_info.get("cache_entries", {}).items()) if v.get("filename") == fname]
+                    file_size = pth.stat().st_size
+                    pth.unlink()
+                    # Entferne alle passenden Cache-Entries
+                    for k in matching_keys:
+                        entry = self.cache_info["cache_entries"].pop(k, None)
+                        if entry:
+                            try:
+                                self.cache_info["total_size_bytes"] -= int(entry.get("size_bytes", file_size))
+                            except Exception:
+                                pass
+
+                    results["deleted"].append(str(pth))
+                except Exception as e:
+                    results["errors"].append({"path": str(pth), "error": str(e)})
+
+            # Guard: keine negativen Größen
+            try:
+                if self.cache_info.get("total_size_bytes", 0) < 0:
+                    self.cache_info["total_size_bytes"] = 0
+            except Exception:
+                self.cache_info["total_size_bytes"] = 0
+
+            self.cache_info["last_cleanup"] = datetime.now().isoformat()
+            self._save_cache_info()
+
+            logger.info(f"Removed {len(results['deleted'])} cache file(s), skipped {len(results['skipped_not_in_cache'])}")
+        except Exception as e:
+            logger.error(f"remove_cached_paths failed: {e}")
+            results["errors"].append({"global": str(e)})
+
+        return results
+
 
 # Convenience Functions
 def create_audio_processor(config_path: Optional[str] = None, **kwargs) -> AudioProcessor:
