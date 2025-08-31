@@ -1,22 +1,28 @@
 ACE-DATA_v2
 --------------
 
-This project includes or is derived from source code from the following third-party projects.  The original copyright notices and license headers are retained in the copied files where present.
+This project includes or is derived from source code from the following third-party projects. The original copyright notices and license headers are retained in the copied files where present.
 
 Third-party components:
 
 - ACE-Step (https://github.com/ace-step/ACE-Step)
-  License: Apache-2.0
-  Notes: A subset of original ACE-Step source files are included under `scripts/train/acestep/` and are unmodified.
-  Upstream commit (reference): <ACE_STEP_COMMIT_SHA>
+  - License: Apache-2.0
+  - Notes: A subset of original ACE-Step source files are included under `scripts/train/acestep/` and are unmodified.
+  - Upstream commit (reference): 6ae0852b1388de6dc0cca26b31a86d711f723cb3  # repo HEAD at time of snapshot; replace with file-level commit SHA when possible
 
 - woct0rdho/ACE-Step (https://github.com/woct0rdho/ACE-Step)
-  License: Apache-2.0
-  Notes: Initial optimisations and patches were used as inspiration for the training scripts. Files from this fork were copied and further adapted for the Data-Tool.
-  Files copied/modified:
+  - License: Apache-2.0
+  - Notes: Initial optimisations and patches were used as inspiration for the training scripts. Files from this fork were copied and further adapted for the Data-Tool.
+  - Files copied/modified:
     - scripts/train/convert2hf_dataset_new.py (modified)
     - scripts/train/preprocess_dataset_new.py (modified)
     - scripts/train/trainer_new.py -> renamed to scripts/train/trainer_optimized.py (modified)
-  Upstream commit (reference): <WOCT0RDHO_COMMIT_SHA>
+  - Upstream commit (reference): ea2ec6ba68be9c73254c2ec8f89a6965c6e5c3e8  # repo HEAD at time of snapshot; replace with file-level commit SHA when possible
 
-See THIRD_PARTY_LICENSES.md for per-file details and provenance notes. If you are a copyright owner and require changes to attribution, please open an issue.
+See `third_party/THIRD_PARTY_LICENSES.md` for per-file details and provenance notes. Please keep the following in mind when publishing or contributing:
+
+- Replace the placeholder upstream commit SHAs in `third_party/THIRD_PARTY_LICENSES.md` with the exact commit hashes from the upstream repositories when possible. This improves traceability for security and audits.
+- Retain original copyright and license headers in any copied files. Do not remove or alter these headers.
+- For any file you modify that originated in an upstream Apache-2.0 project, add a short header comment that states the original source, the upstream commit SHA (if known), a brief summary of your modifications, and the Apache-2.0 license reference.
+
+If you are a copyright owner and require changes to attribution, or if you need help locating the upstream commit SHAs, please open an issue.

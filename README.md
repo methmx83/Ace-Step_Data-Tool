@@ -12,6 +12,90 @@ Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu e
 - Modularer Orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
 - Konfigurierbare Prompts in `config/prompts.json` (inkl. neue Templates für `key` und `vocal_fx`)
 - Sauberes Logging (Konsole + Datei)
+
+## Projektstruktur (Kurz)
+- `scripts/` — enthält Tagging, Training-Helpers und WebUI
+- `presets/` — Whitelists und Spezial-Presets
+- `config/` — Prompt- und Modellkonfigurationen
+- `third_party/` — Third-party license attributions and copies
+
+## Quickstart (Windows, cmd)
+1) Conda-Env (Python 3.11) aktivieren / erstellen
+
+```bat
+conda create -n ace-data_v2_env python=3.11 -y
+conda activate ace-data_v2_env
+```
+
+2) Abhängigkeiten installieren
+
+```bat
+pip install -r requirements.txt
+```
+
+3) WebUI starten (optional)
+
+```bat
+cd scripts\ui
+python ui.py
+```
+
+## License & Third-Party Attributions
+
+This repository and the included code are distributed under the Apache License, Version 2.0. The full license text is included in the `LICENSE` file at the repository root.
+
+Third-party components included in this project are documented in `third_party/THIRD_PARTY_LICENSES.md` and `NOTICE`. Several files and modules were derived from or inspired by other projects that are themselves licensed under Apache-2.0. Those original copyright notices and license headers are retained in the copied files where present.
+
+If you are a contributor or a copyright owner of code referenced in `third_party/THIRD_PARTY_LICENSES.md` and require changes to attribution, please open an issue.
+
+### How this affects you
+
+- You may use, modify and redistribute this code under the terms of the Apache-2.0 license.
+- If you redistribute or modify the code, keep the existing NOTICE and license headers in files that were copied or derived from Apache-2.0 projects.
+- This repository contains both original code (authored by the repository owner) and third-party code that remains under Apache-2.0. See `third_party/THIRD_PARTY_LICENSES.md` for per-file provenance and notes.
+
+### Contributing
+
+Please follow these simple rules when contributing:
+
+- Add a header comment to any file that copies or modifies third-party code describing the original source, a short change description and the license (Apache-2.0). Example header (add at top of modified files):
+
+```text
+# Original: <upstream path> from <upstream repo URL>
+# Upstream commit: <REPLACE_WITH_COMMIT_SHA>
+# Modifications: (brief list of changes applied, e.g. "Windows path normalization; VRAM optimizations; HDF5 changes")
+# License: Apache-2.0 (see repository LICENSE)
+```
+
+- Keep changes small and focused and include a short description in the PR about any third-party code touched.
+
+### Setting the repository license on GitHub
+
+To make the license visible on the project page on GitHub, ensure the `LICENSE` file is committed at the repository root. GitHub will detect the license automatically and show it on the repo main page.
+
+If you prefer to release your own files under a different license (for example MIT), document this clearly in `README.md` and in `third_party/THIRD_PARTY_LICENSES.md` which files are Apache-2.0 and which are under your chosen license. Mixing licenses is allowed, but requires explicit documentation.
+
+## Further help
+
+If you want, I can:
+
+- Try to locate and replace the upstream commit SHAs for the files listed in `third_party/THIRD_PARTY_LICENSES.md`.
+- Insert header templates into the specific modified files (`scripts/train/convert2hf_dataset_new.py`, `scripts/train/preprocess_dataset_new.py`, `scripts/train/trainer_optimized.py`).
+- Create a small CI/Dev-check script that verifies presence of header comments in modified files.
+# ACE-DATA v2
+
+Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu erzeugen (Tags, optional Lyrics/BPM). Nutzt Qwen2-Audio (4-bit/8-bit) und eine strikte Tag-Whitelist in `presets/moods.md`.
+
+## Kurzüberblick
+- Mehrkategorien-Tagging: `genre`, `key` (major/minor), `mood`, `instruments`, `vocal` und `vocal_fx` (z. B. `autotune`, `harmony`, `pitch-up`).
+- Starke Validierung gegen `presets/moods.md` (Alias/Fuzzy-Matching, Whitelist-Regeln).
+- Robustes JSON-Parsing für LLM-Outputs (Objekte/Arrays, Codeblöcke, gequotetes JSON, Fallbacks).
+- Content-basiertes Retry pro Kategorie (konfigurierbar) und Audio-Caching / Multi-Segment-Processing.
+
+## Features
+- Modularer Orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
+- Konfigurierbare Prompts in `config/prompts.json` (inkl. neue Templates für `key` und `vocal_fx`)
+- Sauberes Logging (Konsole + Datei)
  - Neuerungen: spezialisiertes Hiphop-Preset & `rap_style` Kategorie
 	 - `presets/hiphop/moods.md` enthält ein spezialisiertes Set an Moods/Genres/rap-styles für Hip-Hop-Workflows.
 	 - Neue Kategorie `rap_style` (Prompt und Parser) erkennt Stile wie `trap`, `mumble rap`, `lyrical rap` und wird optional per UI/CLI aktiviert.
@@ -172,4 +256,4 @@ Ergebnis: `yourfile_prompt.txt` neben der Audio-Datei.
 - Falls du möchtest, erstelle ich Unit-Tests oder ein kurzes E2E-Skript, das eine Beispiel-Audiodatei durch die Pipeline jagt (ohne Modell-Load für schnelle lokale Checks).
 
 ## Lizenz
-MIT
+Apache-2.0 license

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-# Original source: ACE-Step (https://github.com/ace-step/ACE-Step)
-# Immediate source: woct0rdho/ACE-Step (https://github.com/woct0rdho/ACE-Step)
-# File: scripts/train/convert2hf_dataset_new.py
+# Original: scripts/train/convert2hf_dataset_new.py from ace-step and woct0rdho fork
+# Upstream repos:
+#   - ACE-Step: https://github.com/ace-step/ACE-Step (repo HEAD: 6ae0852b1388de6dc0cca26b31a86d711f723cb3)
+#   - woct0rdho/ACE-Step: https://github.com/woct0rdho/ACE-Step (repo HEAD: ea2ec6ba68be9c73254c2ec8f89a6965c6e5c3e8)
 # Modified for: ACE-DATA_v2
 # Modified by: methmx83 (ACE-DATA_v2)
 # Modification date: 2025-08-31
-# Upstream commit(s): ACE-STEP: 9c5c92946d89418a5fbd2e5e143a7103ec928e3e ; WOCT0RDHO: 5d4e189d8f502046502adf81aebce82c55d48af1
-# Notes: Adapted dataset conversion paths and defaults for Windows. See THIRD_PARTY_LICENSES.md for provenance.
+# Modifications: Windows path normalization, defaults and minor refactors to integrate with ACE-DATA_v2. See `third_party/THIRD_PARTY_LICENSES.md` for provenance and file-level notes.
 
 import argparse
 import os

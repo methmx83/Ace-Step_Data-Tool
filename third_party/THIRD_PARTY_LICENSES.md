@@ -1,11 +1,11 @@
 # THIRD_PARTY_LICENSES.md
 
-This file lists third-party code used in ACE-DATA_v2, the license under which it is provided, and which files in this repository include or are derived from that code. Replace the placeholder SHAs with the exact commit hashes when available.
+This file lists third-party code used in ACE-DATA_v2, the license under which it is provided, and which files in this repository include or are derived from that code. Where possible replace the placeholder SHAs with the exact commit hashes from the upstream repositories to improve traceability.
 
 1) ACE-Step
    - Repo: https://github.com/ace-step/ACE-Step
    - License: Apache-2.0
-   - Upstream commit (reference): <ACE_STEP_COMMIT_SHA>
+  - Upstream commit (reference): 6ae0852b1388de6dc0cca26b31a86d711f723cb3  # repo HEAD at time of snapshot (recommend replacing with file-level commit SHA)
    - Files included (unchanged):
      - scripts/train/acestep/language_segmentation/LangSegment.py
      - scripts/train/acestep/language_segmentation/language_filters.py
@@ -34,19 +34,26 @@ This file lists third-party code used in ACE-DATA_v2, the license under which it
 2) woct0rdho/ACE-Step (fork)
    - Repo: https://github.com/woct0rdho/ACE-Step
    - License: Apache-2.0
-   - Upstream commit (reference): <WOCT0RDHO_COMMIT_SHA>
+  - Upstream commit (reference): ea2ec6ba68be9c73254c2ec8f89a6965c6e5c3e8  # repo HEAD at time of snapshot (recommend replacing with file-level commit SHA)
    - Files copied and modified in this repository:
      - scripts/train/convert2hf_dataset_new.py (modified)
      - scripts/train/preprocess_dataset_new.py (modified)
      - scripts/train/trainer_new.py -> scripts/train/trainer_optimized.py (modified and renamed)
-   - Notes: These files were adapted to the ACE-DATA_v2 project (Windows path normalization, HDF5 and torch optimisations, quantization hints). The original license headers are retained where present, and additional modification lines were added by the current maintainer.
+   - Notes: These files were adapted to the ACE-DATA_v2 project. Typical modifications introduced by the current maintainer include:
+     - Windows path normalization (backslash-safe paths)
+     - HDF5/tensor storage and access adjustments
+     - Torch optimisations and quantization hints for reduced VRAM
+     - Renaming and reorganisation to match ACE-DATA_v2 layout
+   - Required actions for compliance: retain original copyright/license headers in any modified files (do not remove existing headers). Add a header comment in files you modified that documents the original source, a short change summary and the Apache-2.0 license reference.
 
 General notes:
-- The Apache-2.0 license requires that the license text is distributed with the work. Ensure `LICENSE` (Apache-2.0) is present in the repository root.
-- Retain original copyright and license headers in any copied files.
-- If exact upstream commit hashes are known, replace the placeholders above. This improves traceability for security and audit purposes.
+- The Apache-2.0 license requires that the license text is distributed with the work. The repository root contains a `LICENSE` file with the Apache-2.0 text.
+- Retain original copyright and license headers in any copied files. Do not remove or alter these headers.
+- Replace the placeholder SHAs with exact upstream commit hashes when possible. This improves traceability for security and audit purposes.
 
-If you need help finding the exact upstream commit SHAs, run:
+How to obtain upstream commit SHAs (recommended):
+
+PowerShell / cmd steps (example):
 
 ```powershell
 git clone https://github.com/ace-step/ACE-Step temp-ace
@@ -54,4 +61,15 @@ cd temp-ace
 git log -n1 --pretty=format:%H -- scripts/train/acestep
 ```
 
-Or use the GitHub web UI to inspect file history and copy the commit SHA from the commit page.
+Or use the GitHub web UI: open the file in the upstream repo, click "History" and copy the commit SHA for the version you used.
+
+Suggested file-header template for modified files (add at top of each modified file):
+
+```text
+# Original: <upstream path> from <upstream repo URL>
+# Upstream commit: <REPLACE_WITH_COMMIT_SHA>
+# Modifications: (brief list of changes applied, e.g. "Windows path normalization; VRAM optimizations; HDF5 changes")
+# License: Apache-2.0 (see repository LICENSE)
+```
+
+If you want, I can try to locate the likely upstream commit SHAs for the included files and propose replacements — say if you want me to attempt that.
