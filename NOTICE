@@ -12,7 +12,7 @@ Third-party components:
 
 - woct0rdho/ACE-Step (https://github.com/woct0rdho/ACE-Step)
   License: Apache-2.0
-  Notes: Initial optimisations and patches were used as inspiration for the training scripts. Files from this fork were copied and further adapted for ACE-DATA_v2.
+  Notes: Initial optimisations and patches were used as inspiration for the training scripts. Files from this fork were copied and further adapted for the Data-Tool.
   Files copied/modified:
     - scripts/train/convert2hf_dataset_new.py (modified)
     - scripts/train/preprocess_dataset_new.py (modified)
