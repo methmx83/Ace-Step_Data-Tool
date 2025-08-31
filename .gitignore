@@ -50,3 +50,5 @@ data/lora/r256_8bit/**
 *.bat
 
 
+temp-ace/ 
+temp-woct/ 
