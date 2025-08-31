@@ -1,0 +1,22 @@
+ACE-DATA_v2
+--------------
+
+This project includes or is derived from source code from the following third-party projects.  The original copyright notices and license headers are retained in the copied files where present.
+
+Third-party components:
+
+- ACE-Step (https://github.com/ace-step/ACE-Step)
+  License: Apache-2.0
+  Notes: A subset of original ACE-Step source files are included under `scripts/train/acestep/` and are unmodified.
+  Upstream commit (reference): <ACE_STEP_COMMIT_SHA>
+
+- woct0rdho/ACE-Step (https://github.com/woct0rdho/ACE-Step)
+  License: Apache-2.0
+  Notes: Initial optimisations and patches were used as inspiration for the training scripts. Files from this fork were copied and further adapted for ACE-DATA_v2.
+  Files copied/modified:
+    - scripts/train/convert2hf_dataset_new.py (modified)
+    - scripts/train/preprocess_dataset_new.py (modified)
+    - scripts/train/trainer_new.py -> renamed to scripts/train/trainer_optimized.py (modified)
+  Upstream commit (reference): <WOCT0RDHO_COMMIT_SHA>
+
+See THIRD_PARTY_LICENSES.md for per-file details and provenance notes. If you are a copyright owner and require changes to attribution, please open an issue.

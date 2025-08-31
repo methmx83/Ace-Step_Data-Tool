@@ -1,0 +1,13 @@
+{
+    "r": 16,
+    "lora_alpha": 32,
+    "target_modules": [
+        "speaker_embedder",
+        "to_q", "to_k", "to_v", "to_out.0",
+        "linear_q", "linear_k", "linear_v"
+    ],
+    "lora_dropout": 0.1,
+    "bias": "none",
+    "task_type": "FEATURE_EXTRACTION",
+    "use_rslora": true
+}

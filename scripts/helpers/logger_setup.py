@@ -127,10 +127,10 @@ class DualLogger:
         logger = logging.getLogger("SystemInfo")
 
         logger.info("=== SYSTEM INFORMATION ===")
-        logger.info(f"Platform: {platform.platform()}")
-        logger.info(f"Python: {platform.python_version()}")
-        logger.info(f"PyTorch: {torch.__version__}")
-        logger.info(f"CUDA Available: {torch.cuda.is_available()}")
+        logger.info(f"🖥️ Platform: {platform.platform()}")
+        logger.info(f"🐍 Python: {platform.python_version()}")
+        logger.info(f"🧩 PyTorch: {torch.__version__}")
+        logger.info(f"ℹ️ CUDA Available: {torch.cuda.is_available()}")
 
         if torch.cuda.is_available():
             logger.info(f"CUDA Version: {torch.version.cuda}")
@@ -159,7 +159,7 @@ class DualLogger:
 
         logger = logging.getLogger("SessionStart")
 
-        logger.info("=== PROCESSING SESSION START ===")
+        logger.info("=== 🎵 PROCESSING SESSION START 🎵 ===")
         logger.info(f"Total files to process: {len(audio_files)}")
 
         for i, file_path in enumerate(audio_files, 1):
@@ -181,25 +181,25 @@ class DualLogger:
         filename = Path(audio_file).name
         
         if success:
-            logger.info(f"✓ SUCCESS: {filename}")
+            logger.info(f"✅ SUCCESS: {filename}")
             logger.info(f"  Generated tags: {', '.join(tags[:5])}{'...' if len(tags) > 5 else ''}")
             logger.info(f"  Total tags: {len(tags)}")
             logger.debug(f"  All tags: {tags}")
         else:
-            logger.error(f"✗ FAILED: {filename}")
+            logger.error(f"❌ FAILED: {filename}")
             if error:
-                logger.error(f"  Error: {error}")
+                logger.error(f" ❌ Error: {error}")
     
     @staticmethod
     def log_session_summary(successful: int, failed: int, total_time: float):
         """Loggt Session-Zusammenfassung"""
         logger = logging.getLogger("SessionSummary")
         
-        logger.info("=== PROCESSING SESSION SUMMARY ===")
-        logger.info(f"Successful: {successful}")
-        logger.info(f"Failed: {failed}")
-        logger.info(f"Total time: {total_time:.1f} seconds")
-        logger.info(f"Average time per file: {total_time/(successful+failed):.1f}s")
+        logger.info("=== 🎵 PROCESSING SESSION SUMMARY 🎵 ===")
+        logger.info(f"✅ Successful: {successful}")
+        logger.info(f"❌ Failed: {failed}")
+        logger.info(f"🕒 Total time: {total_time:.1f} seconds")
+        logger.info(f"⏱️ Average time per file: {total_time/(successful+failed):.1f}s")
         logger.info("=" * 40)
 
 

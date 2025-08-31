@@ -1,25 +1,29 @@
 ## Genre:
-- hip-hop
+- hip hop
 - rap
-- trip-hop
+- trip hop
 - r&b
 - reggae
 - reggaeton
-- club hip-hop
+- dancehall
+- club hip hop
 - grime
 - trap
-- underground hip-hop
-- old-school hip-hop
-- boom-bap
+- underground hip hop
+- old school hip hop
+- boom bap
 - pop
 - europop
 - dirtysouth
-- conscious hip-hop
+- conscious hip hop
 - crunk
-- lo-fi hip-hop
+- lo-fi hip hop
 - drill
-- alternative hip-hop
+- alternative hip hop
 - turntablism
+- german hip hop
+- german pop
+- euro pop
 
 ## Mood:
 - action
@@ -112,8 +116,6 @@
 - piano
 - keys
 - drums
-- guitar
-- percussion
 - orchestra
 - mallet
 - industrial drums
@@ -143,7 +145,6 @@
 - electronic drums
 - acoustic guitar
 - bass guitar
-- electric guitar
 - rhodes
 - muted guitar
 - acoustic bass
@@ -165,11 +166,14 @@
 - taiko drums
 - acoustic drums
 - voices
+- sax
+- saxophon
 - organ
 - pads
 - vocoder
 - samples
 - turntables
+- scratches
 - sitar
 - sub bass
 - bass drum
@@ -195,6 +199,7 @@
 - freestyle rap
 - melodic rap
 - emo rap
+- german rap
 - gangsta rap
 - cloud rap
 - street rap
@@ -212,19 +217,19 @@
 ## Vocal Fx:
 - clean
 - autotune
-- heavy-autotune
-- subtle-autotune
+- heavy autotune
+- subtle autotune
 - harmony
-- vocal-harmony
+- vocal harmony
 - doubling
-- vocal-doubling
-- pitch-shift
-- pitch-up
-- pitch-down
-- high-pitch
-- low-pitch
+- vocal doubling
+- pitch shift
+- pitch up
+- pitch down
+- high pitch
+- low pitch
 - vocoder
-- formant-shift
+- formant shift
 - delay
 - robotic
 - whisper
@@ -232,6 +237,6 @@
 - chopped
 - stutter
 - reverse
-- ad-libs
+- ad libs
 - backing
 - layered backing

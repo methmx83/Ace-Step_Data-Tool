@@ -100,12 +100,12 @@ def process_all_files(overwrite: bool) -> Iterator[Tuple[str, str, str, dict, st
 
     if total == 0:
         logs += "⚠️ No audio files found in data/audio\n"
-        yield build_progress_html(0.0), "**Status:** Ready.", logs, gr.update(), logs
+        yield build_progress_html(0.0), "**Status:** 🔵 Ready.", logs, gr.update(), logs
         return
 
     # Start-Status
     logs += f"🔍 Found {total} audio file(s)\n"
-    yield build_progress_html(0.0), "**Status:** Starting …", logs, gr.update(choices=find_lyrics_display_names()), logs
+    yield build_progress_html(0.0), "**Status:** 🟢 working ⏳…", logs, gr.update(choices=find_lyrics_display_names()), logs
 
     done = 0
     for fpath in files:
@@ -138,7 +138,7 @@ def process_all_files(overwrite: bool) -> Iterator[Tuple[str, str, str, dict, st
     yield build_progress_html(pct), status, logs, gr.update(choices=find_lyrics_display_names()), logs
 
     # Abschluss
-    yield build_progress_html(100.0), "**Status:** Done.", logs, gr.update(choices=find_lyrics_display_names()), logs
+    yield build_progress_html(100.0), "**Status:** ✅ Done.", logs, gr.update(choices=find_lyrics_display_names()), logs
 
 # ---------- Dropdown -> Lyrics laden ----------
 
@@ -174,7 +174,7 @@ def build_interface():
 
         # Eigene Progressbar + Status (kein Overlay!)
         progress_html = gr.HTML(build_progress_html(0.0))
-        status_md = gr.Markdown("**Status:** Ready.")
+        status_md = gr.Markdown("**Status:** 🔵 Ready.")
 
         # Zwei Spalten: links Log, rechts Editor
         log_state = gr.State("")

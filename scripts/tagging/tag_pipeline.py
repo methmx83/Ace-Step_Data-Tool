@@ -103,7 +103,8 @@ class TagPipeline:
                 # Special-case: key should not be passed through general normalize_tag because
                 # TagProcessor historically drops 'major'/'minor' in transformations. Validate directly.
                 if cat == "key":
-                    nt = str(t).lower().strip()
+                    # Use TagProcessor normalization so plain 'major'/'minor' become 'major key'/'minor key'
+                    nt = self.tp.normalize_tag(t)
                 else:
                     nt = self.tp.normalize_tag(t)
                 if not nt:
@@ -116,7 +117,7 @@ class TagPipeline:
                     continue
                 if cat == "vocal" and nt not in self.tp.allowed_tags.vocal_types:
                     continue
-                if cat == "key" and nt not in self.tp.allowed_tags.keys:
+                if cat == "key" and not self.tp._is_allowed_tag(nt):
                     continue
                 if cat == "vocal_fx" and nt not in self.tp.allowed_tags.vocal_fx:
                     continue

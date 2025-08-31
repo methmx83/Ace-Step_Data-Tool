@@ -29,11 +29,9 @@ outputs/
 runs/
 
 # Data & Large Artifacts (stay local)
-data/**
 !data/.gitkeep
 data/audio/**
 !data/audio/.gitkeep
-datasets/
 checkpoints/
 models/
 weights/
@@ -41,13 +39,12 @@ weights/
 *.bin
 *.safetensors
 
-# Audio files anywhere
+# files anywhere
 *.mp3
 *.wav
 *.flac
 *.ogg
 *.m4a
+*.bat
 
-# Local-only docs (do not publish)
-docs/System_Spezifikationen_full.md
-docs/Ace-Step_TRAIN_INSTRUCTION.md
+

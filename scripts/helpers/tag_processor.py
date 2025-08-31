@@ -144,6 +144,11 @@ class TagProcessor:
         if normalized in self._alias_map:
             normalized = self._alias_map[normalized]
         
+        # Key: plain 'major'/'minor' frühzeitig in '<major|minor> key' umwandeln
+        # damit wir nicht 'major'/'minor' direkt als erlaubten Key zurückgeben
+        if normalized in ("major", "minor"):
+            normalized = f"{normalized} key"
+        
         # Direkte Matches prüfen
         if self._is_allowed_tag(normalized):
             return normalized
@@ -177,6 +182,8 @@ class TagProcessor:
             or tag in self.allowed_tags.keys
             or tag in self.allowed_tags.vocal_fx
             or tag in self.allowed_tags.rap_style
+            # Erlaube auch 'major key' / 'minor key' wenn 'major'/'minor' in allowed keys sind
+            or (tag.endswith(" key") and tag.rsplit(" ", 1)[0] in self.allowed_tags.keys)
         )
     
     def _find_fuzzy_match(self, tag: str) -> Optional[str]:
@@ -254,8 +261,11 @@ class TagProcessor:
             elif "mid" in tag:
                 return "groovy" if "groovy" in self.allowed_tags.moods else None
         
-        # Key/Time entfernen (nicht als finale Tags gewünscht)
-        if re.search(r"\b(?:major|minor)\b", tag) or tag.startswith("key ") or tag.startswith("time "):
+        # Key: plain 'major'/'minor' → 'major key'/'minor key'
+        if tag in ("major", "minor"):
+            return f"{tag} key"
+        # Entferne detaillierte Key-Notationen (z.B. 'key C major') und Time-Signatures
+        if re.search(r"\bkey\s+[a-g][#b]?\s*(?:major|minor)\b", tag) or tag.startswith("time "):
             return "__DROP__"
         
         return None

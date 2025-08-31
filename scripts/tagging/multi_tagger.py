@@ -46,11 +46,11 @@ class MultiTaggerOrchestrator:
                  moods_file_path: str = "presets/moods.md",
                  allow_tag_extras: bool = False):
         self.logger = get_session_logger("Orchestrator")
-        self.logger.info("Initializing MultiTaggerOrchestrator...")
+        self.logger.info("🟡 Initializing MultiTaggerOrchestrator...")
 
         # Load configurations
         self.prompts_config = self._load_json_config(prompts_config_path)
-        self.logger.info(f"Loaded prompts config with {len(self.prompts_config.get('prompt_templates', {}))} templates")
+        self.logger.info(f"🟢 Loaded prompts config with {len(self.prompts_config.get('prompt_templates', {}))} templates")
 
         # Log loaded config
         DualLogger.log_config_info(self.prompts_config, "Prompts Config")
@@ -59,14 +59,14 @@ class MultiTaggerOrchestrator:
         try:
             # Audio einmal in 16kHz WAV cachen und für alle Kategorien verwenden
             self.audio_processor = create_audio_processor(enable_compression=False)
-            self.logger.info("Audio processor initialized")
+            self.logger.info("✅ Audio processor initialized")
         except Exception as e:
             log_exception(self.logger, "audio processor initialization", e)
             raise
 
         try:
             self.tag_processor = create_tag_processor(moods_file_path, allow_extras=allow_tag_extras)
-            self.logger.info("Tag processor initialized")
+            self.logger.info("✅ Tag processor initialized")
 
             # Log tag statistics
             stats = {
@@ -96,17 +96,17 @@ class MultiTaggerOrchestrator:
         # Keep track of processed source files for session-level fallback cleanup
         self._session_source_files = []
 
-        self.logger.info("MultiTaggerOrchestrator initialized successfully")
+        self.logger.info("✅ MultiTaggerOrchestrator initialized successfully")
 
     
     
     def _load_json_config(self, config_path: str) -> Dict[str, Any]:
         """Lädt JSON-Konfigurationsdatei mit Logging"""
         try:
-            self.logger.debug(f"Loading config from: {config_path}")
+            self.logger.debug(f"🔵 Loading config from: {config_path}")
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            self.logger.debug(f"Config loaded successfully, keys: {list(config.keys())}")
+            self.logger.debug(f"✅ Config loaded successfully, keys: {list(config.keys())}")
             return config
         except Exception as e:
             log_exception(self.logger, f"loading config from {config_path}", e)
@@ -115,15 +115,15 @@ class MultiTaggerOrchestrator:
     def _ensure_model_loaded(self):
         """Lazy Model Loading mit detailliertem Logging"""
         if self.model_wrapper is None:
-            self.logger.info("Loading Qwen2-Audio model...")
+            self.logger.info("ℹ️ Loading Qwen2-Audio model...😊")
             start_time = time.time()
             
             try:
                 self.model_wrapper, _ = load_qwen2audio_model(config_path=self.model_config_path)
                 load_time = time.time() - start_time
-                
-                self.logger.info(f"Model loaded successfully in {load_time:.1f}s")
-                
+
+                self.logger.info(f"👍 Model loaded successfully in {load_time:.1f}s")
+
                 # Model-Info loggen
                 if hasattr(self.model_wrapper, 'get_model_info'):
                     model_info = self.model_wrapper.get_model_info()
@@ -209,16 +209,6 @@ class MultiTaggerOrchestrator:
             return count_normalized(derived, only_vocal_allowed=True)
         return 0
     
-    
-    
-    
-
-    
-
-    
-
-    
-    
     def process_audio_file(self, 
                           audio_path: str, 
                           context: Optional[Dict[str, Any]] = None) -> Optional[List[str]]:
@@ -231,7 +221,7 @@ class MultiTaggerOrchestrator:
         audio_path = str(Path(audio_path).resolve())
         
         if not Path(audio_path).exists():
-            file_logger.error(f"Audio file not found: {audio_path}")
+            file_logger.error(f"⚠️ Audio file not found: {audio_path}")
             return None
         
         file_logger.info(f"🎵 Processing: {filename}")
@@ -273,7 +263,7 @@ class MultiTaggerOrchestrator:
             except Exception:
                 pass
         except Exception as e:
-            log_exception(file_logger, "audio preprocessing", e)
+            log_exception(file_logger, "🎵 audio preprocessing", e)
             file_logger.warning("Falling back to original audio path")
             by_cat_needed = {}
             used_audio_paths = [audio_path]
@@ -363,10 +353,6 @@ class MultiTaggerOrchestrator:
             log_exception(write_logger, "writing tags file", e)
             return None
 
-
- 
-
-
 def main():
     """Hauptfunktion mit verbessertem Logging"""
     parser = argparse.ArgumentParser(
@@ -410,7 +396,7 @@ Examples:
     )
     
     main_logger = get_session_logger("Main")
-    main_logger.info("=== MULTI-TAGGER SESSION START ===")
+    main_logger.info("=== 🎵 MULTI-TAGGER SESSION START 🎵 ===")
     main_logger.info(f"Log file: {log_file}")
     main_logger.info(f"Arguments: {vars(args)}")
     
@@ -440,19 +426,19 @@ Examples:
         if file_path.exists():
             audio_files.append(file_path)
         else:
-            main_logger.error(f"File not found: {args.file}")
+            main_logger.error(f"⚠️ File not found: {args.file}")
             sys.exit(1)
     else:
         # Ordner scannen
         input_dir = Path(args.input_dir)
         if not input_dir.exists():
-            main_logger.error(f"Input directory not found: {args.input_dir}")
+            main_logger.error(f"⚠️ Input directory not found: {args.input_dir}")
             sys.exit(1)
         
         audio_files = sorted(list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.wav")))
     
     if not audio_files:
-        main_logger.info("No audio files found")
+        main_logger.info("⚠️ No audio files found")
         sys.exit(0)
     
     # Session Start logging
@@ -484,16 +470,16 @@ Examples:
                         detected_bpm = detect_tempo(str(audio_file))
                         if detected_bpm:
                             context["bpm"] = str(int(detected_bpm))
-                            main_logger.info(f"Detected BPM {context['bpm']} for {audio_file.name}")
+                            main_logger.info(f"✅ Detected BPM {context['bpm']} for {audio_file.name}")
                         else:
-                            main_logger.debug(f"No BPM detected for {audio_file.name}")
+                            main_logger.debug(f"⚠️ No BPM detected for {audio_file.name}")
                     except Exception as e:
                         # Logge, aber fahre fort — BPM-Erkennung ist optional
-                        main_logger.debug(f"BPM detection skipped/error for {audio_file.name}: {e}")
+                        main_logger.debug(f"⚠️ BPM detection skipped/error for {audio_file.name}: {e}")
                 else:
-                    main_logger.debug(f"BPM already present in filename: {context.get('bpm')} for {audio_file.name}")
+                    main_logger.debug(f"⚠️ BPM already present in filename: {context.get('bpm')} for {audio_file.name}")
             except Exception as e:
-                main_logger.debug(f"Unexpected error during BPM detection for {audio_file.name}: {e}")
+                main_logger.debug(f"❌ Unexpected error during BPM detection for {audio_file.name}: {e}")
 
             # Audio verarbeiten
             tags = orchestrator.process_audio_file(str(audio_file), context)
@@ -506,7 +492,7 @@ Examples:
                         try:
                             # Normalisiere auf ganze Zahl
                             bpm_int = int(float(str(bpm_val)))
-                            bpm_tag = f"bpm-{bpm_int}"
+                            bpm_tag = f"{bpm_int} bpm"
 
                             # Entferne alte bpm- Tags (falls vorhanden) und füge das neue ein
                             import re as _re
@@ -514,11 +500,11 @@ Examples:
                             # Platziere das bpm-tag bevorzugt nach dem ersten Tag, sonst ans Ende
                             insert_pos = 1 if len(tags) > 0 else len(tags)
                             tags.insert(insert_pos, bpm_tag)
-                            main_logger.info(f"Inserted BPM tag '{bpm_tag}' into tags for {audio_file.name}")
+                            main_logger.info(f"✅ Inserted BPM tag '{bpm_tag}' into tags for {audio_file.name}")
                         except Exception as _e:
-                            main_logger.debug(f"Failed to normalise/insert BPM tag for {audio_file.name}: {_e}")
+                            main_logger.debug(f"⚠️ Failed to normalise/insert BPM tag for {audio_file.name}: {_e}")
                 except Exception as e:
-                    main_logger.debug(f"Error when handling BPM tag for {audio_file.name}: {e}")
+                    main_logger.debug(f"❌ Error when handling BPM tag for {audio_file.name}: {e}")
 
                 # Tags-Datei schreiben
                 tags_file = orchestrator.write_tags_file(str(audio_file), tags)
@@ -526,11 +512,11 @@ Examples:
                     DualLogger.log_file_processing_result(str(audio_file), tags, True)
                     successful += 1
                 else:
-                    DualLogger.log_file_processing_result(str(audio_file), [], False, "Failed to write tags file")
+                    DualLogger.log_file_processing_result(str(audio_file), [], False, "❌ Failed to write tags file")
                     failed += 1
                 # per-file cleanup disabled: using session-level cleanup
             else:
-                DualLogger.log_file_processing_result(str(audio_file), [], False, "No tags generated")
+                DualLogger.log_file_processing_result(str(audio_file), [], False, "⚠️ No tags generated")
                 failed += 1
                 
         except Exception as e:
@@ -564,9 +550,9 @@ Examples:
                     continue
 
             if to_delete:
-                main_logger.info(f"Performing session cache cleanup: {len(to_delete)} file(s)")
+                main_logger.info(f"ℹ️ Performing session cache cleanup: {len(to_delete)} file(s)")
                 res = orchestrator.audio_processor.remove_cached_paths(to_delete)
-                main_logger.info(f"Cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
+                main_logger.info(f"🆗 Cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
             else:
                 # Fallback: try to find cache entries by source_path in audio_processor.cache_info
                 try:
@@ -586,13 +572,13 @@ Examples:
                     if fallback_files:
                         main_logger.info(f"Found {len(fallback_files)} fallback cache file(s) by source_path; deleting them")
                         res = orchestrator.audio_processor.remove_cached_paths(fallback_files)
-                        main_logger.info(f"Fallback cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
+                        main_logger.info(f"✅ Fallback cache cleanup completed: deleted={len(res.get('deleted',[]))}, skipped={len(res.get('skipped_not_in_cache',[]))}, errors={len(res.get('errors',[]))}")
                     else:
-                        main_logger.info("No cache files found to delete for this session (even by fallback scan)")
+                        main_logger.info("⚠️ No cache files found to delete for this session (even by fallback scan)")
                 except Exception as e:
-                    main_logger.error(f"Fallback cache scan failed: {e}")
+                    main_logger.error(f"⚠️ Fallback cache scan failed: {e}")
     except Exception as e:
-        main_logger.error(f"Session cache cleanup failed: {e}")
+        main_logger.error(f"❌ Session cache cleanup failed: {e}")
 
 
 if __name__ == "__main__":

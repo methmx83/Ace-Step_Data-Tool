@@ -40,14 +40,14 @@
     },
     "instruments": {
       "system_prompt_lines": [
-        "Identify the main instruments in this audio.",
+        "Identify the main instruments or sounds in this audio.",
         "Respond ONLY with valid JSON in this exact format:",
-        "{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\"]}",
+        "{\"instruments\": [\"instrument1\", \"instrument2\", \"instrument3\", \"instrument4\", \"instrument5\"]}",
         "",
         "Focus on:",
-        "- Clearly audible instruments",
-        "- The 4 most prominent instruments",
-        "- Use English names only.",
+        "- Clearly audible instruments or sounds",
+        "- The 5 most prominent instruments or sounds",
+        "- Try to specify and use English names only.",
         "- Do NOT output genres, vocal styles or generic terms (e.g., 'rap', 'hip hop', 'vocals', 'beat').",
         "Only actual instruments."
       ],
@@ -90,7 +90,7 @@
       },
       "max_tokens": 32,
       "temperature": 0.2,
-      "retry_count": 2
+      "retry_count": 3
     },
     "vocal_fx": {
       "system_prompt_lines": [
@@ -111,7 +111,7 @@
     ,
     "rap_style": {
       "system_prompt_lines": [
-        "Identify the rap style if present (e.g., 'lyrical rap', 'trap', 'mumble rap').",
+        "Identify the rap style if present (e.g., 'lyrical rap', 'fast rap', 'cloud rap', 'double time rap', 'gangsta rap', 'street rap', 'mumble rap').",
         "Respond ONLY with valid JSON in this exact format:",
         "{\"rap_style\": [\"style1\", \"style2\"]}",
         "",
@@ -123,7 +123,7 @@
       },
       "max_tokens": 40,
       "temperature": 0.2,
-      "retry_count": 1
+      "retry_count": 2
     }
   },
   "workflow_config": {
@@ -175,8 +175,8 @@
       "vocal": 1,
       "key": 1,
         "vocal_fx": 2,
-        "rap_style": 2
+        "rap_style": 1
     },
-    "max_total_tags": 13
+    "max_total_tags": 14
   }
 }
