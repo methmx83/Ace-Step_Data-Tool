@@ -7,7 +7,6 @@ import time
 import subprocess
 import shutil
 import json
-from acedata_theme import ace_theme
 from pathlib import Path
 from typing import Iterator, Tuple, List
 
@@ -25,7 +24,7 @@ from scripts.helpers.logger_setup import get_session_logger
 
 LOGGER = get_session_logger("WebUI")
 # Header-Bild
-HEADER_URL = "https://raw.githubusercontent.com/methmx83/ACE-DATA_v2/refs/heads/main/docs/top.png"
+HEADER_URL = "https://raw.githubusercontent.com/methmx83/Ace-Step_Data-Tool/refs/heads/main/scripts/ui/assets/top.png"
 
 CSS = """
 .progress-wrap { width: 100%; background: #024142; border-radius: 6px; height: 18px; overflow: hidden; }
@@ -262,7 +261,22 @@ def launch_ui():
     else:
         lora_jsons = []
 
-    with gr.Blocks(css=CSS, title="Ace-Step Data-Tool", theme=ace_theme) as demo:
+    theme = None  # Standardwert, falls das Laden fehlschlägt
+    theme_path = Path(__file__).parent / "acedata.json"
+    
+    try:
+        with open(theme_path, "r", encoding="utf-8") as f:
+            theme_dict = json.load(f)
+            theme = gr.Theme.from_dict(theme_dict)
+        print("Theme 'acedata.json' successfully loaded.")
+    except Exception as e:
+        print(f"Error loading theme: {e}")
+        # Fallback auf Standard-Theme
+        theme = gr.themes.Default()
+
+    # =======================================================
+
+    with gr.Blocks(css=CSS, title="Ace-Step Data-Tool", theme=theme) as demo:
 
         # BILD-HEADER
         gr.HTML(f'<img src="{HEADER_URL}" class="app-header-image">')
