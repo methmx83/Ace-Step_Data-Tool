@@ -1,6 +1,3 @@
-@echo off
-set "CONDA_ROOT=Z:\AI\software\miniconda3"
-set "ENV_NAME=acedata"
-set "WORKDIR=Z:\AI\projects\music\DATA_TOOL\scripts\ui"
-
-start "DATA-TOOL V2" cmd /k ""%CONDA_ROOT%\Scripts\activate.bat" %ENV_NAME% && cd /d %WORKDIR% && python ui.py"
+version https://git-lfs.github.com/spec/v1
+oid sha256:437c7876859f7079b724a7c699febcddc041c7581539a1863ef53ba2e3f8aa28
+size 241

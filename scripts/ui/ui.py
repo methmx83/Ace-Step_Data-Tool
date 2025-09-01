@@ -30,10 +30,21 @@ CSS = """
 .progress-wrap { width: 100%; background: #024142; border-radius: 6px; height: 18px; overflow: hidden; }
 .progress-bar  { height: 100%; width: 0%; background: #0a5baf; transition: width .15s linear; }
 
+/* --- Global: max width for the entire Gradio app --- */
+.gradio-container, .gradio-root, .container {
+    max-width: 1500px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+    box-sizing: border-box;
+}
+
 /* --- CSS für das Header-Bild --- */
 .app-header-image {{
     width: 100%;
     height: auto;
+    background: transparent !important;
     display: block; /* Verhindert kleine Lücken unter dem Bild */
 }}
 
@@ -659,7 +670,7 @@ def launch_ui():
                 train_btn.click(fn=on_train, inputs=[max_steps_slider, num_workers_slider, save_every_n_steps_slider, save_last_slider, lora_config_dd, ckpt_path_input, last_lora_path_input], outputs=[finetune_log], show_progress=False)
                 stop_ft_btn.click(fn=on_stop_finetune, inputs=[], outputs=[], show_progress=False)
 
-    demo.launch(debug=True)
+    demo.launch()
 
 if __name__ == "__main__":
     launch_ui()
