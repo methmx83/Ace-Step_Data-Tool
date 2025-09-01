@@ -458,10 +458,6 @@ Examples:
             # Kontext aus Filename extrahieren
             context = extract_from_filename(str(audio_file))
 
-            # BPM-Erkennung: Falls im Dateinamen kein BPM gefunden wurde,
-            # versuchen wir, ihn aus der Audiodatei zu ermitteln. Lazy import
-            # von detect_tempo, damit schwere Dependencies nicht beim Modulimport
-            # geladen werden müssen.
             try:
                 if not context.get("bpm") or str(context.get("bpm")).lower() in ("unknown", ""):
                     try:

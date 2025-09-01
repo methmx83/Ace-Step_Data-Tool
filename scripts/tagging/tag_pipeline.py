@@ -3,10 +3,6 @@
 """
 scripts/tagging/tag_pipeline.py — Extraktion, Normalisierung und Auswahl von Tags
 
-Ziele:
-- Aus Responses je Kategorie Roh-Tags extrahieren
-- Mit TagProcessor normalisieren und deduplizieren
-- Nach Policy (min/max/order/max_total) finale Liste zusammenstellen
 """
 from __future__ import annotations
 

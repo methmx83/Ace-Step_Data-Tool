@@ -363,8 +363,15 @@ class Text2MusicDataset(Dataset):
         # Get speaker embedding
         key = item["keys"]
         speaker_emb_path = item.get("speaker_emb_path")
-        if not speaker_emb_path:
-            speaker_emb = self.get_speaker_emb_file(speaker_emb_path)
+        speaker_emb = None
+        if speaker_emb_path:
+            try:
+                speaker_emb = self.get_speaker_emb_file(speaker_emb_path)
+                if speaker_emb is None:
+                    logger.warning(f"Could not load speaker embedding from {speaker_emb_path}")
+            except Exception as e:
+                logger.warning(f"Error loading speaker embedding {speaker_emb_path}: {e}")
+                speaker_emb = None
 
         if speaker_emb is None:
             speaker_emb = torch.zeros(512)
