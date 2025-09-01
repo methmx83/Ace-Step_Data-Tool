@@ -29,14 +29,7 @@ outputs/
 runs/
 
 # Data & Large Artifacts (stay local)
-data/audio/**
-!data/audio/.gitkeep
-data/data_sets/jsons_sets/**
-!data/data_sets/jsons_sets/.gitkeep
-data/data_sets/train_set/**
-!data/data_sets/train_set/.gitkeep
-data/lora/r256_8bit/**
-!data/lora/r256_8bit/.gitkeep
+data/**
 *.pt
 *.bin
 *.safetensors

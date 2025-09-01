@@ -1,4 +1,56 @@
+import os
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+
+# zentrale Liste aller relativen Verzeichnisse, die beim Install/Start erzeugt werden sollen
+DATA_DIRS = [
+    os.path.join("data"),
+    os.path.join("data", "audio"),
+    os.path.join("data", "cache"),
+    os.path.join("data", "lora"),
+    os.path.join("data", "datasets", "jsons_sets"),
+    os.path.join("data", "datasets", "train_set"),
+]
+
+
+def ensure_data_dirs(root=None):
+    """Erzeuge alle Pfade in DATA_DIRS relativ zu root (default: Projekt-Root).
+
+    Gibt die Liste der tatsächlich erzeugten absoluten Pfade zurück.
+    """
+    root = root or os.path.dirname(__file__)
+    created = []
+    for rel in DATA_DIRS:
+        target = os.path.join(root, rel)
+        try:
+            os.makedirs(target, exist_ok=True)
+            created.append(target)
+        except Exception:
+            # best-effort: Fehler nicht die Installation abbrechen lassen
+            continue
+    return created
+
+
+def main():
+    ensure_data_dirs()
+
+
+class PostInstall(install):
+    def run(self):
+        # idiomatischer Aufruf des Eltern-Install-Verhaltens
+        super().run()
+        # best-effort: Versuche, die DATA_DIRS im Repo-Root anzulegen
+        try:
+            repo_root = os.path.dirname(__file__)
+            created = ensure_data_dirs(root=repo_root)
+            if created:
+                print("Created folders (if missing):")
+                for p in created:
+                    print("  ", p)
+            else:
+                print("No folders created (they may already exist).")
+        except Exception:
+            print("Warning: could not create data dirs during install (continuing)")
 
 setup(
     name="Ace-Step_Data-Tool",
@@ -49,4 +101,5 @@ setup(
         ],
     },
     python_requires=">=3.11",
+    cmdclass={"install": PostInstall},
 )

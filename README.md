@@ -1,259 +1,174 @@
-# ACE-DATA v2
+<h1 align="center">🎵 ACE-Step Data-Tool</h1>
+<p align="center">
+  <strong>Automated tool for building music datasets compatible with ACE-Step</strong><br>
+  <em>Extracts lyrics, tags & BPM from audio files – fully local with Ollama & Gradio</em>
+</p>
 
-Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu erzeugen (Tags, optional Lyrics/BPM). Nutzt Qwen2-Audio (4-bit/8-bit) und eine strikte Tag-Whitelist in `presets/moods.md`.
 
-## Kurzüberblick
-- Mehrkategorien-Tagging: `genre`, `key` (major/minor), `mood`, `instruments`, `vocal` und `vocal_fx` (z. B. `autotune`, `harmony`, `pitch-up`).
-- Starke Validierung gegen `presets/moods.md` (Alias/Fuzzy-Matching, Whitelist-Regeln).
-- Robustes JSON-Parsing für LLM-Outputs (Objekte/Arrays, Codeblöcke, gequotetes JSON, Fallbacks).
-- Content-basiertes Retry pro Kategorie (konfigurierbar) und Audio-Caching / Multi-Segment-Processing.
+## ✨ Features
+   - 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
+   - 🎙️  **Lyric Detection** – automatically via Genius.com
+   - 🕺   **BPM Analysis** – via Librosa
+   - 🖥️ **Modern WebUI** – with mood slider, genre presets & custom prompt field
+   - 🗂️  **Export to ACE-Step training format**
+   - 🔁  **Retry logic & logging built-in**
 
-## Features
-- Modularer Orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
-- Konfigurierbare Prompts in `config/prompts.json` (inkl. neue Templates für `key` und `vocal_fx`)
-- Sauberes Logging (Konsole + Datei)
 
-## Projektstruktur (Kurz)
-- `scripts/` — enthält Tagging, Training-Helpers und WebUI
-- `presets/` — Whitelists und Spezial-Presets
-- `config/` — Prompt- und Modellkonfigurationen
-- `third_party/` — Third-party license attributions and copies
+## Quick Overview
+	- Multi-category tagging: `genre`, `key` (major/minor), `mood`, `instruments`, `vocal`, and `vocal_fx` (e.g., `autotune`, `harmony`, `pitch-up`).
+	- Configurable prompts in `config/prompts.json` (includes new templates for `key` and `vocal_fx`)
+	- Content-based retry per category (configurable) and audio caching / multi-segment processing.
+	- Modular orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
+	- Clean logging (console + file)
 
-## Quickstart (Windows, cmd)
-1) Conda-Env (Python 3.11) aktivieren / erstellen
+**New additions: specialized hiphop preset & `rap_style` category**
+	- `presets/hiphop/moods.md` contains a specialized set of moods/genres/rap-styles for Hip-Hop workflows.
+	- New `rap_style` category (prompt and parser) detects styles like `trap`, `mumble rap`, `lyrical rap` and is optionally enabled via UI/CLI.
+	
+**BPM Detection: There is now a dedicated script for BPM analysis at `scripts/helpers/bpm.py`**
+	- Function: `detect_tempo(audio_path: str) -> Optional[float]` detects the tempo and returns a number on success.
+	- Integration: The pipeline calls the detection before prompt/tag generation and adds a normalized tag in the format `bpm-XXX` to the generated `_prompt.txt` files.
 
-```bat
-conda create -n ace-data_v2_env python=3.11 -y
-conda activate ace-data_v2_env
+**Key Modules**
+	- `scripts/helpers/lyrics.py` — Core logic for determining artist/title, constructing Genius URLs, fallback search, and writing `<audio-basename>_lyrics.txt`.
+	- `scripts/helpers/clean_lyrics.py` — Post-processing: removes headers/metadata and writes cleaned lyrics (e.g., remove everything before the first `[Verse]` marker).
+	- `scripts/helpers/metadata.py` — String normalization for filenames/URLs (e.g., `normalize_string`, `clean_filename`, `clean_rap_metadata`).
+	- `scripts/helpers/shared_logs.py` — Central log buffer (`LOGS`) and `log_message()` for consistent UI display.
+
+**New WebUI: `scripts/ui/ui.py` (Gradio) is the current interface**
+    - Start: `python -m scripts.ui.ui` starts the WebUI.
+    - The UI internally starts `multi_tagger` as a subprocess (with `--suppress_header`), shows live logs, and offers a prompt editor for post-processing the `_prompt.txt` files.
+
+**Lyrics Acquisition (Lyrics Scraping**
+	- The tool attempts to automatically retrieve the lyrics for the respective piece from the internet. It uses Genius.com as the source, first forming a suitable lyrics URL from the artist/title data. 
+	- If the direct URL is unsuccessful, a search query is executed on Genius and the first matching result is used. The lyrics are extracted as plain text (using `Requests` + `BeautifulSoup4`) and saved in a file `<Name>_lyrics.txt`.
+**File Format:** *Each `<Name>_lyrics.txt` file initially records the artist and title, followed by the complete lyrics (UTF-8 encoded).
+**Note:** *A short pause is inserted between requests to avoid overloading the target website. If no text is found, the tool aborts processing of that song (i.e., no tag generation occurs without lyrics – purely instrumental tracks or unknown songs are skipped with a corresponding note).
+
+**Directory Scan & File Processing**
+	- By default, the tool expects a folder (`data/audio` in the project directory) containing audio files (supported: `.mp3`, `.wav`, `.flac`, `.m4a`).
+	- All files (recursively in subfolders) are read and processed one after another. Intermediate results and logs are displayed for each track.
+
+
+## 💻 Recommended Setup
+	| Component | Recommended 	|
+	|--------------|-------------------	|
+	| OS               | Windows 10 Pro 	|
+	| GPU             | 12 GB VRAM 		|
+	| RAM            | 32 GB 					|
+	| Python        | 3.11 						|
+	| CUDA          | 12.9 					|
+	| Model         | `Qwen2-Audio-7B-Instruct` |
+
+
+### Windows Installation
+1. *Install NVIDIA Video Driver:*
+  You should install the latest version of your GPUs driver. Download drivers here: [NVIDIA GPU Drive](https://www.nvidia.com/Download/index.aspx).
+
+2. *Install CUDA Toolkit:*
+   Follow the instructions to install [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive).
+
+3. *Install PyTorch:*
+   Install `torch` and `triton`. Go to https://pytorch.org to install it. For example `pip install torch torchvision torchaudio triton`
+   You will need the correct version of PyTorch that is compatible with your CUDA drivers, so make sure to select them carefully.
+   [Install PyTorch](https://pytorch.org/get-started/locally/).
+
+- Confirm if CUDA is installed correctly. Try `nvcc`. If that fails, you need to install `cudatoolkit` or CUDA drivers.
+
+4. *Install BitsandBytes:*
+	Install `bitsandbytes` and check it with `python -m bitsandbytes`
+	
+### Installation
+
+**Conda Installation** *(recommended)*
+```bash
+- conda create --name acedata python=3.11
+
+- conda activate acedata
 ```
 
-2) Abhängigkeiten installieren
-
-```bat
-pip install -r requirements.txt
+*Install Pytorch*
+```bash
+- pip install torch==2.7.1+cu126 torchvision==0.22.1+cu126 torchaudio==2.7.1+cu126 --index-url https://download.pytorch.org/whl/cu126
 ```
 
-3) WebUI starten (optional)
-
-```bat
-cd scripts\ui
-python ui.py
+*Clone the repository*
+```bash
+- git clone https://github.com/methmx83/Ace-Step_Data-Tool.git
+- cd Ace-Step_Data-Tool
 ```
+
+*Install dependencies*
+```bash
+- pip install -e .
+```
+
+## 🚀 Quickstart
+```bash
+# Launch the WebUI
+- conda activate acedata
+- acedata
+```
+# Alternative
+```bash
+- conda activate acedata
+- python start.py
+```
+*Open WebUI* [http://localhost:7860]
+  
+
+## Example: 
+*Content of a* **_prompt.txt**
+When the pipeline processes an audio file, a `_prompt.txt` is created next to the file. It contains a simple, comma-separated list of tags. Example:
+`pop, bpm-114, electronic, minor, sad, piano, synth-pad, female-vocal`
+
+*Notes:*
+- The BPM tag has the format `bpm-<INT>` (e.g., `bpm-114`).
+- Tags are lowercase and ideally hyphen-separated (`synth-pad`, `female-vocal`).
+- The pipeline automatically adds the BPM tag (if detected) and removes duplicate `bpm-*` entries.
+- If you want to manually adjust the order in the file, you can use the prompt editor in the WebUI.
+- `config/` — Prompt & Model Configs (`config/prompts.json` contains new categories)
+- `presets/` — `moods.md` with whitelist tags (Genres, Moods, Instruments, Vocal Types, Keys, Vocal Fx)
+- `data/` — `audio/`, `cache/`, `output/` (Audio and generated `_prompt.txt`)
+
+## Architecture & Flow
+1. `ContextExtractor` reads Artist/Title/BPM from filename.
+2. `SegmentPlanner` plans segments according to `workflow_config` and caches the union via `AudioProcessor`.
+3. `PromptBuilder` generates system+user prompts per category.
+4. `InferenceRunner` calls the model (multiple audio paths per category possible), including technical and content-based retries.
+5. `TagPipeline` extracts raw tags per category, normalizes against the whitelist (in `presets/moods.md`), applies Min/Max/Order/Overall limits, and resolves conflicts.
+6. Orchestrator writes final tags as `*_prompt.txt` next to the audio file.
+
+## Important Config Options
+- `config/prompts.json` — Prompt templates and `workflow_config.default_categories` (standard now includes `key` and `vocal_fx`).
+- `workflow_config.audio_segments` — e.g., `["best","middle"]` (are cached).
+- `output_format.min_tags_per_category` / `max_tags_per_category` — Min/Max per category.
+
+## Presets / Whitelist
+- `presets/moods.md` contains the allowed tags for `genres`, `moods`, `instruments`, `vocal types`, `keys`, and `vocal_fx`.
+ - New: `presets/hiphop/moods.md` is an example preset for Hip-Hop-specific tags. Select it in the UI or via `--moods_file presets/hiphop/moods.md` in the CLI run.
+
+### Enable Rap Style
+- CLI: Enable by adding `--moods_file presets/hiphop/moods.md` or set `workflow_config.default_categories` in `config/prompts.json` to include `rap_style`.
+
+## Performance / Notes
+- Qwen2-Audio models (7B) can require a lot of VRAM; we use 4-bit quantization.
+- For fast runs: set `workflow_config.audio_segments` to `best`/`middle` instead of `full`.
+
+## Troubleshooting
+- Missing tags: Check logs (console + log file). The parser attempts several fallbacks: JSON objects, arrays, code blocks, quoted JSON, and heuristic text search.
+
+## Legal / Notes
+- Web scraping of sites like Genius may be subject to restrictions by their Terms of Service. Please check the legal situation before running automated scrapes on a large scale.
+
+
+## License
+Apache-2.0 license
 
 ## License & Third-Party Attributions
 
 This repository and the included code are distributed under the Apache License, Version 2.0. The full license text is included in the `LICENSE` file at the repository root.
 
 Third-party components included in this project are documented in `third_party/THIRD_PARTY_LICENSES.md` and `NOTICE`. Several files and modules were derived from or inspired by other projects that are themselves licensed under Apache-2.0. Those original copyright notices and license headers are retained in the copied files where present.
-
-If you are a contributor or a copyright owner of code referenced in `third_party/THIRD_PARTY_LICENSES.md` and require changes to attribution, please open an issue.
-
-### How this affects you
-
-- You may use, modify and redistribute this code under the terms of the Apache-2.0 license.
-- If you redistribute or modify the code, keep the existing NOTICE and license headers in files that were copied or derived from Apache-2.0 projects.
-- This repository contains both original code (authored by the repository owner) and third-party code that remains under Apache-2.0. See `third_party/THIRD_PARTY_LICENSES.md` for per-file provenance and notes.
-
-### Contributing
-
-Please follow these simple rules when contributing:
-
-- Add a header comment to any file that copies or modifies third-party code describing the original source, a short change description and the license (Apache-2.0). Example header (add at top of modified files):
-
-```text
-# Original: <upstream path> from <upstream repo URL>
-# Upstream commit: <REPLACE_WITH_COMMIT_SHA>
-# Modifications: (brief list of changes applied, e.g. "Windows path normalization; VRAM optimizations; HDF5 changes")
-# License: Apache-2.0 (see repository LICENSE)
-```
-
-- Keep changes small and focused and include a short description in the PR about any third-party code touched.
-
-### Setting the repository license on GitHub
-
-To make the license visible on the project page on GitHub, ensure the `LICENSE` file is committed at the repository root. GitHub will detect the license automatically and show it on the repo main page.
-
-If you prefer to release your own files under a different license (for example MIT), document this clearly in `README.md` and in `third_party/THIRD_PARTY_LICENSES.md` which files are Apache-2.0 and which are under your chosen license. Mixing licenses is allowed, but requires explicit documentation.
-
-## Further help
-
-If you want, I can:
-
-- Try to locate and replace the upstream commit SHAs for the files listed in `third_party/THIRD_PARTY_LICENSES.md`.
-- Insert header templates into the specific modified files (`scripts/train/convert2hf_dataset_new.py`, `scripts/train/preprocess_dataset_new.py`, `scripts/train/trainer_optimized.py`).
-- Create a small CI/Dev-check script that verifies presence of header comments in modified files.
-# ACE-DATA v2
-
-Tooling, um automatisch ACE-STEP-kompatible Trainingsdaten aus Audiodateien zu erzeugen (Tags, optional Lyrics/BPM). Nutzt Qwen2-Audio (4-bit/8-bit) und eine strikte Tag-Whitelist in `presets/moods.md`.
-
-## Kurzüberblick
-- Mehrkategorien-Tagging: `genre`, `key` (major/minor), `mood`, `instruments`, `vocal` und `vocal_fx` (z. B. `autotune`, `harmony`, `pitch-up`).
-- Starke Validierung gegen `presets/moods.md` (Alias/Fuzzy-Matching, Whitelist-Regeln).
-- Robustes JSON-Parsing für LLM-Outputs (Objekte/Arrays, Codeblöcke, gequotetes JSON, Fallbacks).
-- Content-basiertes Retry pro Kategorie (konfigurierbar) und Audio-Caching / Multi-Segment-Processing.
-
-## Features
-- Modularer Orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
-- Konfigurierbare Prompts in `config/prompts.json` (inkl. neue Templates für `key` und `vocal_fx`)
-- Sauberes Logging (Konsole + Datei)
- - Neuerungen: spezialisiertes Hiphop-Preset & `rap_style` Kategorie
-	 - `presets/hiphop/moods.md` enthält ein spezialisiertes Set an Moods/Genres/rap-styles für Hip-Hop-Workflows.
-	 - Neue Kategorie `rap_style` (Prompt und Parser) erkennt Stile wie `trap`, `mumble rap`, `lyrical rap` und wird optional per UI/CLI aktiviert.
-
-## Projektstruktur (Kurz)
-- `scripts/`
-	- `tagging/multi_tagger.py` — Orchestrator und CLI
-	- `tagging/tag_pipeline.py` — Extraktion / Normalisierung / Policy-Auswahl
-	- `core/model_loader.py` — Qwen2-Audio-Integration (Quantisierungsoptionen)
-	- `core/audio_processor.py` — Preprocessing, Segmentierung, Cache
-	- `core/prompt_builder.py` — Prompt-Templates aus `config/prompts.json`
-	- `core/inference_runner.py` — Model-Calls, Retry-Logik, Parsing
-	- `core/segment_planner.py` — Planung der Segmente pro Kategorie
-	- `helpers/json_parser.py` — Robuste Extraktion & Fallbacks (jetzt auch `key`/`vocal_fx`)
-	- `helpers/tag_processor.py` — Normalisierung, Alias-Map, Conflict-Resolution (inkl. `keys` + `vocal_fx`)
-	- `helpers/context_extractor.py` — Kontext aus Dateinamen
-	- `helpers/logger_setup.py` — Session-Logging
-
-	## Neu
-
-	- BPM-Erkennung: Es gibt jetzt ein dediziertes Skript zur BPM-Analyse unter `scripts/helpers/bpm.py`.
-		- Funktion: `detect_tempo(audio_path: str) -> Optional[float]` erkennt das Tempo und gibt bei Erfolg eine Zahl zurück.
-		- Integration: Die Pipeline ruft die Erkennung vor der Prompt-/Tag-Erzeugung auf und fügt ein normalisiertes Tag im Format `bpm-XXX` in die generierten `_prompt.txt` Dateien ein.
-
-	- Neues WebUI: `scripts/ui/ui.py` (Gradio) ist das aktuelle Interface.
-		- Start: `python -m scripts.ui.ui` startet die WebUI.
-		- Die UI startet intern `multi_tagger` als Subprozess (mit `--suppress_header`), zeigt Live-Logs und bietet einen Prompt-Editor zum Nachbearbeiten der `_prompt.txt` Dateien.
-
-	Hinweis: Wenn du die Logs beim direkten CLI-Start weniger ausführlich haben willst, nutze `--suppress_header` für `multi_tagger`.
-
-## Lyrics Scraper (neu)
-
-Kurz: Das Projekt enthält jetzt einen eigenständigen Lyric‑Scraper, der Lyrics aus dem Web (z. B. Genius.com) holt, die Dateien bereinigt und über die WebUI editierbar macht. Die relevanten Module liegen unter `scripts/helpers/`.
-
-Wichtige Module
-- `scripts/helpers/lyrics.py` — Kernlogik zum Ermitteln von Artist/Title, Konstruktion von Genius‑URLs, Fallback‑Suche und Schreiben von `<audio-basename>_lyrics.txt`.
-- `scripts/helpers/clean_lyrics.py` — Post‑Processing: entfernt Kopfzeilen/Metadaten und schreibt bereinigte Lyrics (z. B. alles vor erstem `[Verse]`-Marker entfernen).
-- `scripts/helpers/metadata.py` — String‑Normalisierung für Dateinamen/URLs (z. B. `normalize_string`, `clean_filename`, `clean_rap_metadata`).
-- `scripts/helpers/shared_logs.py` — Zentraler Log‑Puffer (`LOGS`) und `log_message()` für konsistente UI‑Anzeige.
-
-Verwendung
-- WebUI (empfohlen für interaktives Arbeiten):
-	```bat
-	cd scripts\ui
-	python ui.py
-	```
-	Im Browser Tab "Lyrics" findest du: `Get Lyrics` (läuft Scraper + speichert), `Overwrite lyrics` (steuert Überschreiben), Live‑Log und `Save Lyrics` (speichert manuell editierten Text).
-
-- Programmgesteuert / CLI: Es gibt helper‑Funktionen in `scripts/helpers/lyrics.py` — z. B. `process_single_file(path)` oder `get_lyrics(artist, title)` für Scripting in eigenen Tools oder Tests.
-
-Ausgabe
-- `<audio-basename>_lyrics.txt` — die rohe bzw. bereinigte Lyrics‑Datei (UTF‑8).
-- Optional werden Begleitdateien wie `_prompt.txt` oder Backup‑Dateien (`.bak`) erzeugt, abhängig von Pipeline‑Schritten.
-
-Wichtig für Entwickler
-- Logging: Verwende `shared_logs.log_message()` anstelle von `print()` in allen Lyrics‑Modulen, damit die WebUI die Logs konsistent anzeigen kann.
-- HTTP/Robustheit: Beim Scrapen empfiehlt sich eine Retry/Backoff‑Logik bei 429/5xx Antworten und ein moderates `REQUEST_DELAY` (z. B. 1.0–2.0s), um IP‑Sperren zu vermeiden.
-- Tests: Erstelle Unit‑Tests für `normalize_string`, `clean_rap_metadata` und `bereinige_datei` (temporäre Dateien als Fixtures). Für `scrape_genius_lyrics` nutze lokale HTML‑Fixtures statt Live‑Requests in CI.
-
-Rechtliches / Hinweise
-- Web‑Scraping von Seiten wie Genius kann Einschränkungen durch deren AGB unterliegen. Bitte prüfe die rechtliche Lage bevor du automatisierte Scrapes in großem Maßstab fährst.
-
-Weiteres
-- Empfehlung: Kleine Code‑Änderung — ersetze verbleibende `print()`‑Aufrufe in `scripts/helpers/lyrics.py` durch `shared_logs.log_message()`; das verbessert die UI‑Integration.
-
-	## Beispiel: Inhalt einer _prompt.txt
-
-	Wenn die Pipeline eine Audiodatei verarbeitet, wird neben der Datei eine `_prompt.txt` erzeugt. Sie enthält eine einfache, kommagetrennte Liste von Tags. Beispiel:
-
-	pop, bpm-114, electronic, minor, sad, piano, synth-pad, female-vocal
-
-	Hinweise:
-	- Das BPM-Tag hat das Format `bpm-<INT>` (z. B. `bpm-114`).
-	- Tags sind lowercase und idealerweise hyphen-separated (`synth-pad`, `female-vocal`).
-	- Die Pipeline fügt das BPM-Tag automatisch hinzu (wenn erkannt) und entfernt doppelte `bpm-*` Einträge.
-	- Wenn du die Reihenfolge in der Datei manuell anpassen willst, kannst du den Prompt-Editor in der WebUI verwenden.
-- `config/` — Prompt- & Modell-Configs (`config/prompts.json` enthält neue Kategorien)
-- `presets/` — `moods.md` mit Whitelist-Tags (Genres, Moods, Instruments, Vocal Types, Keys, Vocal Fx)
-- `data/` — `audio/`, `cache/`, `output/` (Audio und generierte `_prompt.txt`)
-
-## Architektur & Flow
-1. `ContextExtractor` liest Artist/Title/BPM aus Dateinamen.
-2. `SegmentPlanner` plant Segmente laut `workflow_config` und cached die Union via `AudioProcessor`.
-3. `PromptBuilder` erzeugt system+user prompts je Kategorie.
-4. `InferenceRunner` ruft das Modell auf (mehrere Audiopfade pro Kategorie möglich), inklusive technischer und content-basierter Retries.
-5. `TagPipeline` extrahiert Roh-Tags je Kategorie, normalisiert gegen Whitelist (in `presets/moods.md`), wendet Min/Max/Order/Gesamtlimits an und löst Konflikte.
-6. Orchestrator schreibt finale Tags als `*_prompt.txt` neben die Audio-Datei.
-
-## Setup
-1) Conda-Env (Python 3.11) aktivieren / erstellen
-
-```bat
-conda create -n ace-data_v2_env python=3.11 -y
-conda activate ace-data_v2_env
-```
-
-2) Abhängigkeiten installieren
-
-```bat
-pip install -r requirements.txt
-```
-
-3) (Optional Windows helpers)
-
-```bat
-RUN_env.bat   # setzt lokale ENV-Variablen
-RUN.bat       # Beispiel-Run (konfiguriert)
-```
-
-## Run (Windows, cmd)
-- Kompletten Ordner verarbeiten:
-
-```bat
-python -m scripts.tagging.multi_tagger --input_dir data\audio --verbose
-```
-
-- Einzeldatei verarbeiten:
-
-```bat
-python -m scripts.tagging.multi_tagger --file "data\audio\yourfile.mp3" --verbose
-```
-
-- Tags außerhalb der Whitelist erlauben:
-
-```bat
-python -m scripts.tagging.multi_tagger --file "data\audio\yourfile.mp3" --allow_tag_extras --verbose
-```
-
-Ergebnis: `yourfile_prompt.txt` neben der Audio-Datei.
-
-## Wichtige Konfig-Optionen
-- `config/prompts.json` — Prompt-Templates und `workflow_config.default_categories` (Standard enthält jetzt `key` und `vocal_fx`).
-- `workflow_config.audio_segments` — z. B. `["best","middle"]` (werden gecacht).
-- `output_format.min_tags_per_category` / `max_tags_per_category` — Min/Max je Kategorie.
-
-## Presets / Whitelist
-- `presets/moods.md` enthält die erlaubten Tags für `genres`, `moods`, `instruments`, `vocal types`, `keys` und `vocal_fx`.
-- Du kannst einen alternativen Pfad per Umgebungsvariable `ACE_MOODS_MD` setzen.
- - Neu: `presets/hiphop/moods.md` ist ein Beispiel-Preset für Hip-Hop-spezifische Tags. Wähle es in der UI oder via `--moods_file presets/hiphop/moods.md` beim CLI-Run.
-
-### Rap Style aktivieren
-- In der WebUI gibt es eine Checkbox `Enable rap_style`. Wenn aktiviert, wird die Kategorie `rap_style` an das Modell angefragt und die Parser-Fallbacks greifen.
-- CLI: aktiviere durch Hinzufügen von `--moods_file presets/hiphop/moods.md` oder setze `workflow_config.default_categories` in `config/prompts.json` so, dass `rap_style` enthalten ist.
-
-## Tests & Smoke-Checks
-- Empfohlen: kurze Unit-Tests für `JSONParser` (z. B. `key` / `vocal_fx` Fallbacks) und `TagProcessor` (Whitelist/Alias/Fuzzy).
-- Wenn du Tests möchtest, generiere ich gerne passende `pytest`-Dateien.
-
-## Performance / Hinweise
-- Qwen2-Audio-Modelle (7B) können viel VRAM benötigen; verwende 4-bit/8-bit-Quantisierung oder CPU-Offload in `core/model_loader.py` falls nötig.
-- Für schnelle Runs: `workflow_config.audio_segments` auf `best`/`middle` setzen statt `full`.
-
-## Troubleshooting
-- Fehlende Tags: Prüfe Logs (Konsole + Logdatei). Der Parser versucht mehrere Fallbacks: JSON-Objekte, Arrays, Codeblöcke, gequotetes JSON und heuristische Textsuche.
-- Vocals vs Genre: `rap` ist ein Genre; Vocal-Typen sind eigene Whitelist-Einträge (z. B. `male vocal`).
-
-## Weiteres
-- Falls du möchtest, erstelle ich Unit-Tests oder ein kurzes E2E-Skript, das eine Beispiel-Audiodatei durch die Pipeline jagt (ohne Modell-Load für schnelle lokale Checks).
-
-## Lizenz
-Apache-2.0 license
+- [ACE-Step] (https://github.com/ace-step/ACE-Step)
+- [woctordho] (https://github.com/woct0rdho/ACE-Step)
