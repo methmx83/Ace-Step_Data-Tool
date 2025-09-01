@@ -4,6 +4,10 @@
   <em>*Extracts lyrics, tags & BPM from audio files – fully automated*</em>
 </p>
 
+<p align="center">
+  <img src="./docs/Screenshot.jpg" alt="ACE-Step Data Tool Screenshot" width="50%">
+</p>
+
 
 ### ✨ Features
 - 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
