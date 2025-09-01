@@ -5,14 +5,92 @@
 </p>
 
 
-## ✨ Features
-   - 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
-   - 🎙️  **Lyric Detection** – automatically via Genius.com
-   - 🕺   **BPM Analysis** – via Librosa
-   - 🖥️ **Modern WebUI** – with mood slider, genre presets & custom prompt field
-   - 🗂️  **Export to ACE-Step training format**
-   - 🔁  **Retry logic & logging built-in**
+### ✨ Features
+	- 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
+	- 🎙️  **Lyric Detection** – automatically via Genius.com
+	- 🕺   **BPM Analysis** – via Librosa
+	- 🖥️ **Modern WebUI** – with mood slider, genre presets & custom prompt field
+	- 🗂️  **Export to ACE-Step training format**
+	- 🔁  **Retry logic & logging built-in**
 
+### 💻 Recommended Setup
+	| Component  | Recommended   |
+	|------------|---------------|
+	| OS         | Windows 10 Pro|
+	| GPU        | 12 GB VRAM    |
+	| RAM        | 32 GB         |
+	| Python     | 3.11          |
+	| CUDA       | 12.9          |
+	| Model      | `Qwen2-Audio-7B-Instruct`|
+
+### Windows Installation
+1. *Install NVIDIA Video Driver:*
+	- You should install the latest version of your GPUs driver. Download drivers here: [NVIDIA GPU Drive](https://www.nvidia.com/Download/index.aspx).
+
+2. *Install CUDA Toolkit:*
+	- Follow the instructions to install [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive).
+
+3. *Install PyTorch:*
+	- Install `torch` and `triton`. 
+	- Go to https://pytorch.org to install it. For example `pip install torch torchvision torchaudio triton`
+	- You will need the correct version of PyTorch that is compatible with your CUDA drivers, so make sure to select them carefully.
+	- [Install PyTorch](https://pytorch.org/get-started/locally/).
+	- Confirm if CUDA is installed correctly. Try `nvcc`. If that fails, you need to install `cudatoolkit` or CUDA drivers.
+
+4. *Install BitsandBytes:*
+	- Install `bitsandbytes` and check it with `python -m bitsandbytes`
+	
+### Installation
+**Conda Installation** *(recommended)*
+```bash
+conda create --name acedata python=3.11
+conda activate acedata
+```
+
+*Install Pytorch*
+```bash
+pip install torch==2.7.1+cu126 torchvision==0.22.1+cu126 torchaudio==2.7.1+cu126 --index-url https://download.pytorch.org/whl/cu126
+```
+
+*Clone the repository*
+```bash
+git clone https://github.com/methmx83/Ace-Step_Data-Tool.git
+cd Ace-Step_Data-Tool
+```
+
+*Install dependencies*
+```bash
+pip install -e .
+```
+
+### 🚀 Quickstart
+	
+**Launch the WebUI**
+```bash
+conda activate acedata
+acedata
+```
+**Alternative**
+```bash
+conda activate acedata
+python start.py
+```
+*Open WebUI* [http://localhost:7860]
+  
+
+### Example: 
+	*Content of a* **_prompt.txt**
+	When the pipeline processes an audio file, a `_prompt.txt` is created next to the file. It contains a simple, comma-separated list of tags. Example:
+	`pop, bpm-114, electronic, minor, sad, piano, synth-pad, female-vocal`
+
+*Notes:*
+	- The BPM tag has the format `bpm-<INT>` (e.g., `bpm-114`).
+	- Tags are lowercase and ideally hyphen-separated (`synth-pad`, `female-vocal`).
+	- The pipeline automatically adds the BPM tag (if detected) and removes duplicate `bpm-*` entries.
+	- If you want to manually adjust the order in the file, you can use the prompt editor in the WebUI.
+	- `config/` — Prompt & Model Configs (`config/prompts.json` contains new categories)
+	- `presets/` — `moods.md` with whitelist tags (Genres, Moods, Instruments, Vocal Types, Keys, Vocal Fx)
+	- `data/` — `audio/`, `cache/`, `output/` (Audio and generated `_prompt.txt`)
 
 ## Quick Overview
 	- Multi-category tagging: `genre`, `key` (major/minor), `mood`, `instruments`, `vocal`, and `vocal_fx` (e.g., `autotune`, `harmony`, `pitch-up`).
@@ -20,10 +98,6 @@
 	- Content-based retry per category (configurable) and audio caching / multi-segment processing.
 	- Modular orchestrator: PromptBuilder, InferenceRunner, SegmentPlanner, TagPipeline, ContextExtractor
 	- Clean logging (console + file)
-
-## New additions: specialized hiphop preset & `rap_style` category
-	- `presets/hiphop/moods.md` contains a specialized set of moods/genres/rap-styles for Hip-Hop workflows.
-	- New `rap_style` category (prompt and parser) detects styles like `trap`, `mumble rap`, `lyrical rap` and is optionally enabled via UI/CLI.
 	
 ## BPM Detection: There is now a dedicated script for BPM analysis at `scripts/helpers/bpm.py`
 	- Function: `detect_tempo(audio_path: str) -> Optional[float]` detects the tempo and returns a number on success.
@@ -47,88 +121,7 @@
 
 ## Directory Scan & File Processing
 	- By default, the tool expects a folder (`data/audio` in the project directory) containing audio files (supported: `.mp3`, `.wav`, `.flac`, `.m4a`).
-	- All files (recursively in subfolders) are read and processed one after another. Intermediate results and logs are displayed for each track.
-
-
-### 💻 Recommended Setup
-	| Component | Recommended 	
-	|----------- |-------------------	|
-	| OS            | Windows 10 Pro 	
-	| GPU          | 12 GB VRAM 		
-	| RAM         | 32 GB 					
-	| Python     | 3.11 						
-	| CUDA       | 12.9 					
-	| Model      | `Qwen2-Audio-7B-Instruct` 
-
-
-### Windows Installation
-1. *Install NVIDIA Video Driver:*
-	- You should install the latest version of your GPUs driver. Download drivers here: [NVIDIA GPU Drive](https://www.nvidia.com/Download/index.aspx).
-
-2. *Install CUDA Toolkit:*
-	- Follow the instructions to install [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive).
-
-3. *Install PyTorch:*
-	- Install `torch` and `triton`. Go to https://pytorch.org to install it. For example `pip install torch torchvision torchaudio triton`
-	- You will need the correct version of PyTorch that is compatible with your CUDA drivers, so make sure to select them carefully.
-	- [Install PyTorch](https://pytorch.org/get-started/locally/).
-	- Confirm if CUDA is installed correctly. Try `nvcc`. If that fails, you need to install `cudatoolkit` or CUDA drivers.
-
-4. *Install BitsandBytes:*
-	- Install `bitsandbytes` and check it with `python -m bitsandbytes`
-	
-### Installation
-**Conda Installation** *(recommended)*
-	```bash
-	- conda create --name acedata python=3.11
-
-	- conda activate acedata
-	```
-
-*Install Pytorch*
-	```bash
-	- pip install torch==2.7.1+cu126 torchvision==0.22.1+cu126 torchaudio==2.7.1+cu126 --index-url https://download.pytorch.org/whl/cu126
-	```
-
-*Clone the repository*
-	```bash
-	- git clone https://github.com/methmx83/Ace-Step_Data-Tool.git
-	- cd Ace-Step_Data-Tool
-	```
-
-*Install dependencies*
-	```bash
-	- pip install -e .
-	```
-
-### 🚀 Quickstart
-	
-**Launch the WebUI**
-	```bash
-	- conda activate acedata
-	- acedata
-	```
-**Alternative**
-	```bash
-	- conda activate acedata
-	- python start.py
-	```
-*Open WebUI* [http://localhost:7860]
-  
-
-### Example: 
-	*Content of a* **_prompt.txt**
-	When the pipeline processes an audio file, a `_prompt.txt` is created next to the file. It contains a simple, comma-separated list of tags. Example:
-	`pop, bpm-114, electronic, minor, sad, piano, synth-pad, female-vocal`
-
-*Notes:*
-	- The BPM tag has the format `bpm-<INT>` (e.g., `bpm-114`).
-	- Tags are lowercase and ideally hyphen-separated (`synth-pad`, `female-vocal`).
-	- The pipeline automatically adds the BPM tag (if detected) and removes duplicate `bpm-*` entries.
-	- If you want to manually adjust the order in the file, you can use the prompt editor in the WebUI.
-	- `config/` — Prompt & Model Configs (`config/prompts.json` contains new categories)
-	- `presets/` — `moods.md` with whitelist tags (Genres, Moods, Instruments, Vocal Types, Keys, Vocal Fx)
-	- `data/` — `audio/`, `cache/`, `output/` (Audio and generated `_prompt.txt`)
+	- All files (recursively in subfolders) are read and processed one after another. Intermediate results and logs are displayed for each track.	
 
 ## Architecture & Flow
 	1. `ContextExtractor` reads Artist/Title/BPM from filename.
@@ -159,6 +152,8 @@
 
 ## Legal / Notes
 	- Web scraping of sites like Genius may be subject to restrictions by their Terms of Service. Please check the legal situation before running automated scrapes on a large scale.
+
+
 
 
 ### License
