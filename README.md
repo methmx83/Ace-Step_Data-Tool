@@ -6,12 +6,12 @@
 
 
 ### ✨ Features
-	- 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
-	- 🎙️  **Lyric Detection** – automatically via Genius.com
-	- 🕺   **BPM Analysis** – via Librosa
-	- 🖥️ **Modern WebUI** – with mood slider, genre presets & custom prompt field
-	- 🗂️  **Export to ACE-Step training format**
-	- 🔁  **Retry logic & logging built-in**
+- 🧠 **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
+- 🎙️  **Lyric Detection** – automatically via Genius.com
+- 🕺   **BPM Analysis** – via Librosa
+- 🖥️ **Modern WebUI** – with mood slider, genre presets & custom prompt field
+- 🗂️  **Export to ACE-Step training format**
+- 🔁  **Retry logic & logging built-in**
 
 ### 💻 Recommended Setup
 	| Component  | Recommended   |
