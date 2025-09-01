@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="./docs/screenshot.jpg" alt="ACE-Step Data Tool Screenshot" width="50%">
+  <img src="./docs/screenshot.jpg" alt="ACE-Step Data Tool Screenshot" width="80%">
 </p>
 
 
