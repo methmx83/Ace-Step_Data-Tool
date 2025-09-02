@@ -8,8 +8,8 @@ DATA_DIRS = [
     os.path.join("data", "audio"),
     os.path.join("data", "cache"),
     os.path.join("data", "lora"),
-    os.path.join("data", "datasets", "jsons_sets"),
-    os.path.join("data", "datasets", "train_set"),
+    os.path.join("data", "data_sets", "jsons_sets"),
+    os.path.join("data", "data_sets", "train_set"),
 ]
 
 

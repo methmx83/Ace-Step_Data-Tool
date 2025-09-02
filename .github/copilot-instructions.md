@@ -31,7 +31,7 @@ Ace-Step_Data-Tool2 ist ein Python-Tool zur **automatischen Erstellung von ACE-S
 
 ## Wichtige Pfade/Dateien
 - `data/audio/` – Eingangs-Audios  
-- `data/output/` – generierte `_prompt.txt` / `_lyrics.txt`  
+- `data/audio/` – generierte `_prompt.txt` / `_lyrics.txt`  
 - `presets/moods.md` – Whitelist/Regeln & Definitionen (z. B. **`keys`** = kurze Keyboard-Stabs; **Rap-Style** getrennt von Genre)  
 - `config/prompts.json` – Prompt-Vorlagen für Tag-LLM (**nicht eigenmächtig umbauen**)  
 - **WebUI:** `scripts/ui/ui.py` (ggf. `ui.py`, je nach Branch)  

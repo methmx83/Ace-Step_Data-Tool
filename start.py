@@ -12,8 +12,8 @@ def ensure_data_dirs_runtime():
         Path("data") / "audio",
         Path("data") / "cache",
         Path("data") / "lora",
-        Path("data") / "datasets" / "jsons_sets",
-        Path("data") / "datasets" / "train_set",
+        Path("data") / "data_sets" / "jsons_sets",
+        Path("data") / "data_sets" / "train_set",
     ]
 
     created = []
