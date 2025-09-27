@@ -9,6 +9,28 @@
 </p>
 
 
+## Table of Contents
+- [Features](#features)
+- [Recommended Setup](#recommended-setup)
+- [Windows Installation](#windows-installation)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [Example `_prompt.txt`](#example)
+- [Quick Overview](#quick-overview)
+- [BPM Detection](#bpm-detection)
+- [Lyrics Acquisition](#lyrics-acquisition-lyrics-scraping)
+- [Directory Scan & File Processing](#directory-scan--file-processing)
+- [Architecture & Flow](#architecture--flow)
+- [Finetuning (Ace-StepLoRA Adapter Training)](#finetuning-lora-adapter-training)
+- [Important Config Options](#important-config-options)
+- [Presets / Whitelist](#presets--whitelist)
+- [Troubleshooting](#troubleshooting)
+- [Legal / Notes](#legal--notes)
+- [License](#license)
+- [License & Third-Party Attributions](#license--third-party-attributions)
+
+
+<a id="features"></a>
 ### ✨ Features
 - 🧠   **LLM-powered Tag Generator** – (genre, moods, bpm, key, instruments, vocals and rap style)
 - 🎙️   **Lyric Detection** – automatically via Genius.com
@@ -16,7 +38,9 @@
 - 🖥️   **Modern WebUI** – with mood slider, genre presets & custom prompt field
 - 🗂️   **Export to ACE-Step training format**
 - 🔁   **Retry logic & logging built-in**
+- 🧬   **LoRA Finetuning Tab** – end-to-end dataset conversion & LoRA adapter trainingfor the ACE‑Step base model (convert → preprocess → train)
 
+<a id="recommended-setup"></a>
 ### 💻 Recommended Setup
 	| Component  | Recommended   |
 	|------------|---------------|
@@ -67,6 +91,7 @@ cd Ace-Step_Data-Tool
 pip install -e .
 ```
 
+<a id="quickstart"></a>
 ### 🚀 Quickstart
 	
 **Launch the WebUI**
@@ -82,6 +107,7 @@ python start.py
 *Open WebUI* [http://localhost:7860]
   
 
+<a id="example"></a>
 ## Example: 
 *Content of a* **_prompt.txt**
 When the pipeline processes an audio file, a `_prompt.txt` is created next to the file. It contains a simple, comma-separated list of tags. Example:
@@ -111,6 +137,98 @@ When the pipeline processes an audio file, a `_prompt.txt` is created next to th
 4. `InferenceRunner` calls the model (multiple audio paths per category possible), including technical and content-based retries.
 5. `TagPipeline` extracts raw tags per category, normalizes against the whitelist (in `presets/moods.md`), applies Min/Max/Order/Overall limits, and resolves conflicts.
 6. Orchestrator writes final tags as `*_prompt.txt` next to the audio file.
+
+<a id="finetuning-lora-adapter-training"></a>
+## 🧬 Finetuning (Ace-Step LoRA Adapter Training)
+The WebUI tab **"🧬 Finetuning"** lets you train a LoRA adapter for the ACE‑Step base model. The process is strictly sequential (no parallel runs):
+
+### Workflow (UI)
+1. **Convert Dataset**  
+   Converts audio files + corresponding `_prompt.txt` (and optional `_lyrics.txt`) into JSON samples.  
+   Script: `scripts/train/convert2hf_dataset_new.py`  
+   Defaults:  
+   - `--data_dir` → `data/audio`  
+   - `--output_name` → `data/data_sets/jsons_sets`
+
+2. **Create Dataset**  
+   Builds feature / token dataset for efficient training (embeddings, tokens, caches).  
+   Script: `scripts/train/preprocess_dataset_new.py`  
+   Defaults:  
+   - `--input_name` → `data/data_sets/jsons_sets`  
+   - `--output_dir` → `data/data_sets/train_set`
+
+3. **Start Finetuning**  
+   Launches LoRA training (only adapter weights; base model layers stay frozen depending on the LoRA config).  
+   Typical parameters (internally applied / UI-controlled):  
+   - `--dataset_path data/data_sets/train_set`  
+   - `--lora_config_path config/lora/<file>.json`  
+   - `--exp_name <adapter-name>` (folder & run id)  
+   - `--save_every_n_train_steps <N>`  
+   - `--save_last <K>` (rolling retention of last snapshots)  
+   - Optional resume: `--last_lora_path <path>/pytorch_lora_weights.safetensors`
+
+### Optional UI Fields
+Can be overridden in the tab (otherwise defaults are used):
+- `data_dir`
+- `output_name`
+- `input_name`
+- `output_dir`
+
+### Quickstart (CLI)
+```bash
+# 1) Convert to JSON samples
+python scripts/train/convert2hf_dataset_new.py ^
+  --data_dir data/audio ^
+  --output_name data/data_sets/jsons_sets
+
+# 2) Build feature / training dataset
+python scripts/train/preprocess_dataset_new.py ^
+  --input_name data/data_sets/jsons_sets ^
+  --output_dir data/data_sets/train_set
+
+# 3) LoRA training (example)
+python scripts/train/trainer_optimized.py ^
+  --dataset_path data/data_sets/train_set ^
+  --lora_config_path config/lora/Ace-LoRa.json ^
+  --exp_name LoRa_r256_8bit ^
+  --optimizer adamw8bit ^
+  --batch_size 1 ^
+  --accumulate_grad_batches 2 ^
+  --max_steps 1000 ^
+  --save_every_n_train_steps 100 ^
+  --save_last 5 ^
+  --precision bf16
+```
+
+### Resume a Run
+1. Locate the latest snapshot in `data/lora/<exp_name>/epoch=...-step=..._lora/`  
+2. Restart with `--last_lora_path <full path>/pytorch_lora_weights.safetensors` (same `--exp_name`).
+
+### Memory & Performance (12 GB VRAM)
+- `batch_size=1` + `--accumulate_grad_batches=2` to reduce peak VRAM.
+- `adamw8bit` (bitsandbytes) lowers optimizer memory.
+- High LoRA ranks (`r > 256`) can easily exceed memory – test cautiously.
+- Optionally offload text encoder to CPU (slower, more system RAM usage).
+- Use `--precision bf16` (fallback FP16) for stable mixed precision.
+
+### Outputs / Artifacts
+LoRA weights: `data/lora/<exp_name>/epoch=E-step=S_lora/pytorch_lora_weights.safetensors`
+
+Optional analysis helpers (if present):
+- `scripts/train/helpers/inspect_lora_adapter.py`
+- `scripts/train/helpers/verify_lora.py`
+- `scripts/train/helpers/analyze_lora.py`
+
+### Common Issues
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Training does not start | Skipped Convert/Create steps | Run steps 1 & 2 first |
+| Loss = NaN | Learning rate too high / corrupt sample | Lower LR, inspect data |
+| Resume not loading | Path or exp_name mismatch | Align path & exp_name |
+| CUDA OOM | Rank too high or too many target modules | Lower rank / restrict target modules |
+| Missing `_prompt.txt` | Tagging not executed | Run Tagging tab first |
+
+---
 
 ## Important Config Options
 - `config/prompts.json` — Prompt templates and `workflow_config.default_categories` (standard now includes `key` and `vocal_fx`).

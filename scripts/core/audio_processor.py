@@ -40,7 +40,7 @@ class AudioConfig:
     normalize_audio: bool = True    # Audio-Normalisierung
     mono_conversion: bool = True    # Stereo → Mono
     cache_max_size_gb: float = 5.0  # Max Cache-Größe
-    segment_strategy: str = "middle" # "start", "middle", "end", "best"
+    segment_strategy: str = "start", "best", "end" # "start", "middle", "end", "best"
     num_workers: int = 4  # Default number of worker threads for batch processing
     
     @classmethod

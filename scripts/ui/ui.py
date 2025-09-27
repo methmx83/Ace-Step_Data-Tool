@@ -509,16 +509,24 @@ def launch_ui():
                         interactive=True,
                     )
                     ckpt_path_input = gr.Textbox(
-                        value="data/lora/r256_8bit",
+                        value="data/lora/train_17",
                         label="💾 LoRa Checkpoints Path",
                         interactive=True,
                     )
                 # Neues Textfeld für last_lora_path
                 with gr.Row():
                     last_lora_path_input = gr.Textbox(
-                        value="",
+                        value="data/lora/train_17/pytorch_lora_weights.safetensors",
                         label="📁 Resume from LoRA (optional)",
-                        placeholder="data/lora/.../pytorch_lora_weights.safetensors",
+                        placeholder="data/lora/train_17/pytorch_lora_weights.safetensors",
+                        interactive=True,
+                    )    
+
+                # Textfeld für Experimentnamen (--exp_name)
+                    exp_name_input = gr.Textbox(
+                        value="LoRa_r256_8bit",
+                        label="🧪 Name (--exp_name)  ⚠️ Important for resuming",
+                        placeholder="LoRa_r256_8bit",
                         interactive=True,
                     )    
 
@@ -612,7 +620,7 @@ def launch_ui():
                     yield from _run_finetune_command(cmd)
 
 
-                def on_train(max_steps_val: int, num_workers_val: int, save_every_n_steps_val: int, save_last_val: int, selected_lora_config: str, ckpt_path_val: str, last_lora_path_val: str) -> Iterator[str]:
+                def on_train(max_steps_val: int, num_workers_val: int, save_every_n_steps_val: int, save_last_val: int, selected_lora_config: str, ckpt_path_val: str, last_lora_path_val: str, exp_name_val: str) -> Iterator[str]:
                     """
                     Startet trainer_optimized.py direkt in Python und streamt Logs über den
                     gemeinsamen Runner (_run_finetune_command). Die Werte von max_steps und
@@ -626,6 +634,7 @@ def launch_ui():
                     # Das Dropdown liefert nur den Dateinamen; erstelle vollständigen Pfad zum lora-JSON
                     lora_path = f"config/lora/{selected_lora_config}" if selected_lora_config else ""
                     ckpt_path = ckpt_path_val or "data/lora/r256_8bit"
+                    exp_name = (exp_name_val or "").strip() or "LoRa_r256_8bit"
                     cmd = [
                         sys.executable,
                         "scripts/train/trainer_optimized.py",
@@ -642,7 +651,7 @@ def launch_ui():
                         "--precision", 'bf16-mixed',
                         "--accumulate_grad_batches", "2",
                         "--text_encoder_device", "cuda",
-                        "--exp_name", "LoRa_r256_8bit",
+                        "--exp_name", exp_name,
                     ]
 
                     # Füge last_lora_path nur hinzu, wenn es nicht leer ist
@@ -667,7 +676,7 @@ def launch_ui():
                 # Button-Klicks an Callback-Funktionen binden
                 convert_btn.click(fn=on_convert, inputs=[], outputs=[finetune_log], show_progress=False)
                 create_btn.click(fn=on_create, inputs=[], outputs=[finetune_log], show_progress=False)
-                train_btn.click(fn=on_train, inputs=[max_steps_slider, num_workers_slider, save_every_n_steps_slider, save_last_slider, lora_config_dd, ckpt_path_input, last_lora_path_input], outputs=[finetune_log], show_progress=False)
+                train_btn.click(fn=on_train, inputs=[max_steps_slider, num_workers_slider, save_every_n_steps_slider, save_last_slider, lora_config_dd, ckpt_path_input, last_lora_path_input, exp_name_input], outputs=[finetune_log], show_progress=False)
                 stop_ft_btn.click(fn=on_stop_finetune, inputs=[], outputs=[], show_progress=False)
 
     demo.launch()

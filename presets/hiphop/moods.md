@@ -203,7 +203,7 @@
 - gangsta rap
 - cloud rap
 - street rap
-- double time rap
+- doubletime rap
 - chopper rap
 - mumble rap
 - chant rap

@@ -111,7 +111,7 @@
     ,
     "rap_style": {
       "system_prompt_lines": [
-        "Identify the rap style if present (e.g., 'lyrical rap', 'fast rap', 'cloud rap', 'double time rap', 'gangsta rap', 'street rap', 'mumble rap').",
+        "Identify the rap style if present (e.g., 'lyrical rap', 'fast rap', 'cloud rap', 'doubletime rap', 'gangsta rap', 'street rap', 'mumble rap').",
         "Respond ONLY with valid JSON in this exact format:",
         "{\"rap_style\": [\"style1\", \"style2\"]}",
         "",

@@ -24,7 +24,7 @@ class SegmentPlanner:
 
     def segments_for_category(self, category: str) -> List[str]:
         wf = self.cfg.get("workflow_config", {})
-        default = wf.get("audio_segments", ["middle"])  # global default
+        default = wf.get("audio_segments", ["start", "best", "end"])  # global default
         overrides = wf.get("audio_segments_overrides", {}) or {}
         chosen = overrides.get(category, default)
         valid = {"start", "middle", "end", "best", "full"}

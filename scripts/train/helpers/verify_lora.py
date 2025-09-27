@@ -29,8 +29,8 @@ from scripts.helpers.shared_logs import log_message
 
 # Relative Pfade innerhalb des Projekts (nur Projekt-internen Pfad angeben)
 # Beispiel: "data/lora/train_3/Sido_lora3.safetensors"
-old_rel = Path("data/lora/train_3/Sido_lora3.safetensors")
-new_rel = Path("data/lora/new/epoch=58-step=2100_lora/pytorch_lora_weights.safetensors")
+old_rel = Path("data/lora/train_7/pytorch_lora_weights.safetensors")
+new_rel = Path("data/lora/train_20/pytorch_lora_weights.safetensors")
 
 # Vollständige Pfade relativ zur Projektwurzel
 old_path = (ROOT / old_rel).resolve()

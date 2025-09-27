@@ -1,7 +1,7 @@
 from safetensors.torch import load_file
 
 # Pfad zu deiner .ckpt Datei
-ckpt_path = r"Z:\AI\projects\music\ace-lora\loras\chinesrap\pytorch_lora_weights.safetensors"
+ckpt_path = r"Z:\AI\projects\music\DATA_TOOL\data/lora/train_20/pytorch_lora_weights.safetensors"
 
 # Lade Safetensors
 state_dict = load_file(ckpt_path)

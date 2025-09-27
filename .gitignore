@@ -45,3 +45,5 @@ data/**
 
 temp-ace/ 
 temp-woct/ 
+scripts/train/helpers/run.txt
+scripts/train/helpers/write_metadata_adapter_name.py

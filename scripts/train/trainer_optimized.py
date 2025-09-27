@@ -86,7 +86,7 @@ class SaveLoRACallback(Callback):
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         if trainer.global_step % self.save_every_n_steps == 0:
-            checkpoint_dir = self.ckpt_path or os.path.join(os.getcwd(), "./data/lora/r256_8bit")
+            checkpoint_dir = self.ckpt_path or os.path.join(os.getcwd(), "./data/lora/LoRa_r256")
             os.makedirs(checkpoint_dir, exist_ok=True)
 
             epoch = trainer.current_epoch
@@ -96,6 +96,7 @@ class SaveLoRACallback(Callback):
             os.makedirs(lora_path, exist_ok=True)
 
             pl_module.transformer.save_lora_adapter(lora_path, adapter_name=self.adapter_name)
+            print(f"[LoRA saved] {lora_path}")
 
             # Keep only latest checkpoints
             lora_paths = glob(os.path.join(checkpoint_dir, "*_lora"))
@@ -337,6 +338,7 @@ class Pipeline(LightningModule):
             lora_config_dict = json.load(f)
         lora_config = LoraConfig(**lora_config_dict)
         self.transformer.add_adapter(adapter_config=lora_config, adapter_name=adapter_name)
+        
 
         # Load previous LoRA weights if provided
         if last_lora_path:
@@ -605,9 +607,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     # Model and scheduler parameters
     parser.add_argument("--checkpoint_dir", type=str, default=None, help="Directory with pre‑trained ACE‑Step weights")
     parser.add_argument("--shift", type=float, default=3.0, help="Shift for flow matching scheduler")
-    parser.add_argument("--lora_config_path", type=str, default="./config/lora_config_transformer_only.json", help="JSON config for LoRA")
+    parser.add_argument("--lora_config_path", type=str, default="./config/lora/Ace-LoRa.json", help="JSON config for LoRA")
     parser.add_argument("--last_lora_path", type=str, default=None, help="Path to previously saved LoRA weights to resume training")
-    parser.add_argument("--ckpt_path", type=str, default="./data/lora/r256_8bit", help="Lora Checkpoints")
+    parser.add_argument("--ckpt_path", type=str, default="./data/lora/LoRa_r256", help="Lora Checkpoints")
     # Data
     parser.add_argument("--dataset_path", type=str, default="./data/data_sets/train_set", help="Path to preprocessed dataset")
     parser.add_argument("--batch_size", type=int, default=1, help="Training batch size")
@@ -631,7 +633,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("--gradient_clip_val", type=float, default=0.5, help="Gradient clipping value")
     parser.add_argument("--gradient_clip_algorithm", type=str, default="norm", help="Gradient clipping algorithm")
     # Misc
-    parser.add_argument("--exp_name", type=str, default="ace-step_lora", help="Experiment name (used as adapter_name)")
+    parser.add_argument("--exp_name", type=str, default="LoRa_r256", help="Experiment name (used as adapter_name)")
     parser.add_argument("--precision", type=str, default="bf16", help="Mixed precision (bf16-mixed or 16-mixed)")
     parser.add_argument("--save_every_n_train_steps", type=int, default=100, help="Interval in steps to save LoRA weights")
     parser.add_argument("--save_last", type=int, default=5, help="Number of most recent LoRAs to keep on disk")

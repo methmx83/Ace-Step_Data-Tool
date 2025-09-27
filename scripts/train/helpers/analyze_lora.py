@@ -3,7 +3,7 @@ import os
 import re
 
 # ✅ Pfad zu deiner .safetensors Datei:
-file_path = r"Z:\AI\projects\music\ace-lora\loras\chinesrap\pytorch_lora_weights.safetensors"
+file_path = r"Z:\AI\projects\music\DATA_TOOL\data\lora\train_20\pytorch_lora_weights.safetensors"
 
 # Datei laden
 state_dict = load_file(file_path)
